@@ -484,3 +484,83 @@ class TestBackwardCompatibility:
 
         # Enum is string
         assert isinstance(scope, str)
+
+
+class TestDictStyleAccessEdgeCases:
+    """Test edge cases for dict-style access on Pydantic models."""
+
+    def test_getitem_with_extra_fields(self):
+        """Test __getitem__ access to extra fields."""
+        stats = StorageStats(provider="test", extra_field="extra_value")
+
+        # Regular field access
+        assert stats["provider"] == "test"
+
+        # Extra field access via __getitem__
+        assert stats["extra_field"] == "extra_value"
+
+    def test_getitem_missing_key_raises_keyerror(self):
+        """Test that accessing missing key raises KeyError."""
+        stats = StorageStats(provider="test")
+
+        # Accessing non-existent key should raise KeyError
+        import pytest
+
+        with pytest.raises(KeyError):
+            _ = stats["nonexistent"]
+
+    def test_get_with_default(self):
+        """Test .get() method with default value."""
+        stats = StorageStats(provider="test")
+
+        # Existing key
+        assert stats.get("provider") == "test"
+
+        # Non-existing key with default
+        assert stats.get("nonexistent", "default") == "default"
+
+        # Non-existing key without default returns None
+        assert stats.get("nonexistent") is None
+
+
+class TestModelEquality:
+    """Test custom __eq__ implementation for backward compatibility."""
+
+    def test_pydantic_model_equality_with_dict(self):
+        """Test comparing Pydantic model to dict (backward compatibility)."""
+        from chuk_artifacts.types import SessionStats
+
+        session_stats = SessionStats(total_sessions=10, active_sessions=5)
+
+        # Should be equal to dict with same values
+        assert session_stats == {"total_sessions": 10, "active_sessions": 5}
+
+        # Should not be equal to dict with different values
+        assert session_stats != {"total_sessions": 20, "active_sessions": 5}
+
+    def test_pydantic_model_equality_with_extra_dict_fields(self):
+        """Test that extra dict fields are ignored in comparison."""
+        from chuk_artifacts.types import SessionStats
+
+        session_stats = SessionStats(total_sessions=10, active_sessions=5)
+
+        # Dict with extra fields should not match
+        assert session_stats != {
+            "total_sessions": 10,
+            "active_sessions": 5,
+            "extra_field": "value",
+        }
+
+    def test_pydantic_model_equality_with_model(self):
+        """Test comparing Pydantic model to another model."""
+        from chuk_artifacts.types import SessionStats
+
+        session_stats1 = SessionStats(total_sessions=10, active_sessions=5)
+        session_stats2 = SessionStats(total_sessions=10, active_sessions=5)
+        session_stats3 = SessionStats(total_sessions=20, active_sessions=5)
+
+        # Same values should be equal
+        assert session_stats1 == session_stats2
+
+        # Different values should not be equal
+        assert session_stats1 != session_stats3

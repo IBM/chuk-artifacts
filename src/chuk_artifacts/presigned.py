@@ -129,7 +129,9 @@ class PresignedURLOperations:
 
         # Generate artifact ID and key path
         artifact_id = uuid.uuid4().hex
-        key = self.artifact_store.generate_artifact_key(session_id, artifact_id)
+        key = self.artifact_store.generate_artifact_key(
+            session_id, artifact_id, mime_type=mime_type, filename=filename
+        )
 
         try:
             storage_ctx_mgr = self.artifact_store._s3_factory()
@@ -204,8 +206,16 @@ class PresignedURLOperations:
                 session_id=session_id
             )
 
-        # Reconstruct the key path
-        key = self.artifact_store.generate_artifact_key(session_id, artifact_id)
+        # Try to get existing metadata first (in case artifact was already registered)
+        try:
+            existing_metadata = await self.artifact_store.metadata(artifact_id)
+            key = existing_metadata.key  # Use existing key
+            logger.debug(f"Using existing key for artifact {artifact_id}: {key}")
+        except Exception:
+            # No existing metadata, construct key from provided info
+            key = self.artifact_store.generate_artifact_key(
+                session_id, artifact_id, mime_type=mime, filename=filename
+            )
 
         try:
             # Verify the object exists and get its size
@@ -217,7 +227,9 @@ class PresignedURLOperations:
                     )
                     file_size = response.get("ContentLength", 0)
                 except Exception:
-                    logger.warning(f"Artifact {artifact_id} not found in storage")
+                    logger.warning(
+                        f"Artifact {artifact_id} not found in storage at key {key}"
+                    )
                     return False
 
             # Build metadata record using Pydantic model
@@ -358,13 +370,18 @@ class PresignedURLOperations:
         # Generate artifact ID and key path
         artifact_id = uuid.uuid4().hex
 
-        # Use scope-based key generation
-        if request.scope == "user":
-            key = f"grid/{self.artifact_store.sandbox_id}/users/{request.user_id}/{artifact_id}"
-        elif request.scope == "sandbox":
-            key = f"grid/{self.artifact_store.sandbox_id}/shared/{artifact_id}"
-        else:  # session scope
-            key = self.artifact_store.generate_artifact_key(session_id, artifact_id)
+        # Use scope-based key generation with file extensions
+        from .grid import artifact_key
+
+        key = artifact_key(
+            sandbox_id=self.artifact_store.sandbox_id,
+            session_id=session_id,
+            artifact_id=artifact_id,
+            scope=request.scope,
+            owner_id=request.user_id,
+            mime_type=request.mime_type,
+            filename=request.filename,
+        )
 
         try:
             # Initiate multipart upload with storage provider

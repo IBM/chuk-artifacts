@@ -77,8 +77,8 @@ class TestStore:
         self, core_operations, mock_artifact_store, sample_artifact_data
     ):
         """Test successful artifact storage."""
-        # Expected key with new scoped format
-        test_key = "grid/test-sandbox/sessions/test-session-123/abc123def456"
+        # Expected key with new scoped format (with file extension from MIME type)
+        test_key = "grid/test-sandbox/sessions/test-session-123/abc123def456.txt"
 
         # Mock storage operations
         mock_s3 = AsyncMock()

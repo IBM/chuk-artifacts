@@ -1674,3 +1674,104 @@ class TestDefaultConstants:
         assert _DEFAULT_PRESIGN_EXPIRES == 3600
         assert isinstance(_DEFAULT_TTL, int)
         assert isinstance(_DEFAULT_PRESIGN_EXPIRES, int)
+
+
+class TestPresignedErrorPaths:
+    """Test error handling paths in presigned operations."""
+
+    @pytest.mark.asyncio
+    async def test_presign_upload_oauth_error(
+        self, presigned_operations, mock_artifact_store
+    ):
+        """Test presign_upload with OAuth credential error."""
+        # Setup session allocation
+        mock_artifact_store._session_manager.allocate_session.return_value = (
+            "test-session"
+        )
+
+        # Mock S3 to raise OAuth error
+        mock_s3 = AsyncMock()
+        mock_s3.generate_presigned_url.side_effect = Exception(
+            "OAuth credentials not supported"
+        )
+        mock_storage_ctx = AsyncMock()
+        mock_storage_ctx.__aenter__.return_value = mock_s3
+        mock_storage_ctx.__aexit__.return_value = None
+        mock_artifact_store._s3_factory.return_value = mock_storage_ctx
+
+        # Should raise NotImplementedError for OAuth
+        with pytest.raises(NotImplementedError, match="OAuth"):
+            await presigned_operations.presign_upload(
+                filename="test.txt",
+                mime_type="text/plain",
+                session_id="test-session",
+            )
+
+    @pytest.mark.asyncio
+    async def test_register_uploaded_artifact_metadata_error(
+        self, presigned_operations, mock_artifact_store
+    ):
+        """Test register_uploaded_artifact with metadata storage error."""
+        # Setup session allocation
+        mock_artifact_store._session_manager.allocate_session.return_value = (
+            "test-session"
+        )
+        mock_artifact_store.generate_artifact_key.return_value = "grid/test/key"
+
+        # Mock S3 head_object success
+        mock_s3 = AsyncMock()
+        mock_s3.head_object.return_value = {"ContentLength": 1000}
+        mock_storage_ctx = AsyncMock()
+        mock_storage_ctx.__aenter__.return_value = mock_s3
+        mock_storage_ctx.__aexit__.return_value = None
+        mock_artifact_store._s3_factory.return_value = mock_storage_ctx
+
+        # Mock session to raise error on setex
+        mock_session = AsyncMock()
+        mock_session.setex.side_effect = Exception("Redis connection failed")
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_artifact_store._session_factory.return_value = mock_session_ctx
+
+        # Should raise SessionError
+        from chuk_artifacts.exceptions import SessionError
+
+        with pytest.raises(SessionError, match="Metadata registration failed"):
+            await presigned_operations.register_uploaded_artifact(
+                artifact_id="test-id",
+                mime="text/plain",
+                summary="Test",
+                session_id="test-session",
+            )
+
+
+class TestPresignedSessionAllocation:
+    """Test session allocation in presigned operations."""
+
+    @pytest.mark.asyncio
+    async def test_presign_upload_allocates_session_if_none(
+        self, presigned_operations, mock_artifact_store
+    ):
+        """Test that presign_upload allocates session when session_id is None."""
+        # Setup
+        mock_artifact_store._session_manager.allocate_session.return_value = (
+            "auto-allocated-session"
+        )
+
+        mock_s3 = AsyncMock()
+        mock_s3.generate_presigned_url.return_value = "https://example.com/upload"
+        mock_storage_ctx = AsyncMock()
+        mock_storage_ctx.__aenter__.return_value = mock_s3
+        mock_storage_ctx.__aexit__.return_value = None
+        mock_artifact_store._s3_factory.return_value = mock_storage_ctx
+
+        # Call without session_id
+        upload_url, artifact_id = await presigned_operations.presign_upload(
+            filename="test.txt", mime_type="text/plain"
+        )
+
+        # Verify session was allocated
+        mock_artifact_store._session_manager.allocate_session.assert_called_once()
+        assert upload_url == "https://example.com/upload"
+        assert artifact_id is not None

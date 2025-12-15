@@ -713,7 +713,10 @@ class ArtifactStore:
                     if not parsed:
                         continue
 
-                    artifact_id = parsed.artifact_id
+                    # Strip file extension from artifact_id (if present)
+                    # The artifact_id in the key may have an extension, but metadata is stored by UUID only
+                    artifact_id_with_ext = parsed.artifact_id
+                    artifact_id = os.path.splitext(artifact_id_with_ext)[0]
 
                     try:
                         metadata = await self.metadata(artifact_id)
@@ -817,9 +820,21 @@ class ArtifactStore:
         """Get grid path prefix for session."""
         return canonical_prefix(self.sandbox_id, session_id)
 
-    def generate_artifact_key(self, session_id: str, artifact_id: str) -> str:
-        """Generate grid artifact key."""
-        return artifact_key(self.sandbox_id, session_id, artifact_id)
+    def generate_artifact_key(
+        self,
+        session_id: str,
+        artifact_id: str,
+        mime_type: str | None = None,
+        filename: str | None = None,
+    ) -> str:
+        """Generate grid artifact key with optional file extension."""
+        return artifact_key(
+            self.sandbox_id,
+            session_id,
+            artifact_id,
+            mime_type=mime_type,
+            filename=filename,
+        )
 
     def parse_grid_key(self, grid_key: str) -> Optional[GridKeyComponents]:
         """Parse grid key to extract components."""

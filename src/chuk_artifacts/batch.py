@@ -84,7 +84,9 @@ class BatchOperations:
                     continue
 
                 artifact_id = uuid.uuid4().hex
-                key = self.artifact_store.generate_artifact_key(session_id, artifact_id)
+                key = self.artifact_store.generate_artifact_key(
+                    session_id, artifact_id, mime_type=item.mime, filename=item.filename
+                )
 
                 # Store in object storage
                 await self._store_with_retry(

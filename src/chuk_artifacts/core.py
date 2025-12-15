@@ -66,6 +66,8 @@ class CoreStorageOperations:
             artifact_id=artifact_id,
             scope=scope,
             owner_id=owner_id,
+            mime_type=mime,
+            filename=filename,
             # use_legacy_session_format defaults to False (new format)
             # parse() handles reading both legacy and new formats
         )
@@ -287,6 +289,8 @@ class CoreStorageOperations:
             artifact_id=artifact_id,
             scope=scope,
             owner_id=owner_id,
+            mime_type=mime,
+            filename=filename,
         )
 
         try:

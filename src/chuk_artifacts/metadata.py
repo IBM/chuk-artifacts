@@ -84,7 +84,11 @@ class MetadataOperations:
                         # Parse the grid key using chuk_sessions
                         parsed = self.artifact_store.parse_grid_key(key)
                         if parsed:
-                            artifact_id = parsed.artifact_id
+                            # Strip file extension from artifact_id (metadata is stored by UUID only)
+                            import os
+
+                            artifact_id_with_ext = parsed.artifact_id
+                            artifact_id = os.path.splitext(artifact_id_with_ext)[0]
                             try:
                                 record = await self._get_record(artifact_id)
                                 artifacts.append(record)

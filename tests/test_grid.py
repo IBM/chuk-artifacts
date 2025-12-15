@@ -626,3 +626,81 @@ class TestParseEdgeCases:
         # Test with a key that has all required parts
         result = parse("grid/sandbox1/session1/artifact1")
         assert result is not None
+
+
+class TestFileExtensions:
+    """Test MIME type to file extension functionality."""
+
+    def test_artifact_key_with_mime_type(self):
+        """Test that artifact keys include file extensions from MIME types."""
+        from chuk_artifacts.grid import artifact_key
+
+        # Image MIME types
+        key = artifact_key("sandbox1", "session1", "artifact1", mime_type="image/png")
+        assert key.endswith(".png")
+        assert key == "grid/sandbox1/sessions/session1/artifact1.png"
+
+        # PDF
+        key = artifact_key(
+            "sandbox1", "session1", "artifact2", mime_type="application/pdf"
+        )
+        assert key.endswith(".pdf")
+
+        # Video
+        key = artifact_key("sandbox1", "session1", "artifact3", mime_type="video/mp4")
+        assert key.endswith(".mp4")
+
+    def test_artifact_key_with_filename(self):
+        """Test that artifact keys prefer filename extension over MIME type."""
+        from chuk_artifacts.grid import artifact_key
+
+        # Filename extension should be used
+        key = artifact_key(
+            "sandbox1",
+            "session1",
+            "artifact1",
+            mime_type="image/png",
+            filename="photo.jpg",  # Filename has .jpg
+        )
+        assert key.endswith(".jpg")
+
+    def test_artifact_key_without_extension(self):
+        """Test artifact keys without MIME type or filename."""
+        from chuk_artifacts.grid import artifact_key
+
+        # No extension info
+        key = artifact_key("sandbox1", "session1", "artifact1")
+        assert key == "grid/sandbox1/sessions/session1/artifact1"
+
+    def test_get_extension_from_mime(self):
+        """Test get_extension_from_mime function."""
+        from chuk_artifacts.grid import get_extension_from_mime
+
+        # Common MIME types
+        assert get_extension_from_mime("image/png") == ".png"
+        assert get_extension_from_mime("image/jpeg") == ".jpg"
+        assert get_extension_from_mime("application/pdf") == ".pdf"
+        assert get_extension_from_mime("text/plain") == ".txt"
+        assert get_extension_from_mime("video/mp4") == ".mp4"
+        assert get_extension_from_mime("application/json") == ".json"
+
+        # Case insensitive
+        assert get_extension_from_mime("IMAGE/PNG") == ".png"
+        assert get_extension_from_mime("Image/Jpeg") == ".jpg"
+
+        # With whitespace
+        assert get_extension_from_mime("  image/png  ") == ".png"
+
+        # Unknown MIME type
+        assert get_extension_from_mime("application/unknown") == ""
+
+    def test_get_extension_from_filename(self):
+        """Test that filename extension takes precedence."""
+        from chuk_artifacts.grid import get_extension_from_mime
+
+        # Filename extension preferred
+        assert get_extension_from_mime("image/png", "photo.jpg") == ".jpg"
+        assert get_extension_from_mime("video/mp4", "video.avi") == ".avi"
+
+        # Filename without extension falls back to MIME
+        assert get_extension_from_mime("image/png", "photo") == ".png"
