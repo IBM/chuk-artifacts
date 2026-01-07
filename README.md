@@ -656,13 +656,24 @@ export SQLITE_DB_PATH=/data/artifacts.db
 
 **Production / Cloud:**
 ```python
-# S3 provider with Redis sessions
+# S3 provider with Redis standalone
 export ARTIFACT_PROVIDER=vfs-s3
 export SESSION_PROVIDER=redis
 export AWS_S3_BUCKET=my-artifacts
-export REDIS_URL=redis://prod-redis:6379/0
+export SESSION_REDIS_URL=redis://prod-redis:6379/0
 
 # Good for: Multi-tenant SaaS, distributed systems, high scale
+```
+
+**High-Availability Production:**
+```python
+# S3 provider with Redis Cluster
+export ARTIFACT_PROVIDER=vfs-s3
+export SESSION_PROVIDER=redis
+export AWS_S3_BUCKET=my-artifacts
+export SESSION_REDIS_URL=redis://node1:7000,node2:7001,node3:7002
+
+# Good for: Mission-critical systems, zero-downtime requirements, large scale
 ```
 
 **Hybrid Deployments:**
@@ -713,25 +724,50 @@ export AWS_DEFAULT_REGION=us-east-1
 # Memory (default)
 export SESSION_PROVIDER=memory
 
-# Redis (for production)
+# Redis Standalone (for production)
 export SESSION_PROVIDER=redis
-export REDIS_URL=redis://localhost:6379/0
+export SESSION_REDIS_URL=redis://localhost:6379/0
+
+# Redis Cluster (for high-availability production - auto-detected)
+export SESSION_PROVIDER=redis
+export SESSION_REDIS_URL=redis://node1:7000,node2:7001,node3:7002
+
+# Redis with TLS
+export SESSION_REDIS_URL=rediss://localhost:6380/0
+export REDIS_TLS_INSECURE=1  # Set to 1 to skip cert verification (dev only)
 ```
+
+**Redis Cluster Support** (chuk-sessions ≥0.5.0):
+- Automatically detected from comma-separated URL format
+- High availability with automatic failover
+- Horizontal scaling across multiple nodes
+- Production-ready with proper error handling
 
 ### Programmatic Configuration
 
 ```python
-from chuk_artifacts.config import configure_memory, configure_s3
+from chuk_artifacts.config import configure_memory, configure_s3, configure_redis_session
 
 # Development
 config = configure_memory()
 store = ArtifactStore(**config)
 
-# Production
+# Production with S3 and Redis standalone
 config = configure_s3(
     bucket="my-artifacts",
-    region="us-east-1"
+    region="us-east-1",
+    session_provider="redis"
 )
+configure_redis_session("redis://localhost:6379/0")
+store = ArtifactStore(**config)
+
+# Production with S3 and Redis Cluster
+config = configure_s3(
+    bucket="my-artifacts",
+    region="us-east-1",
+    session_provider="redis"
+)
+configure_redis_session("redis://node1:7000,node2:7001,node3:7002")
 store = ArtifactStore(**config)
 ```
 
