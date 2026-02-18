@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chuk-artifacts"
-version = "0.10.1"
+version = "0.11"
 description = "Chuk Artifacts provides a production-ready, modular artifact storage system that works seamlessly across multiple storage backends (memory, filesystem, AWS S3, IBM Cloud Object Storage) with Redis or memory-based metadata caching and strict session-based security."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,8 +14,8 @@ dependencies = [
   "pyyaml>=6.0.2",
   "aioboto3>=14.3.0",
   "redis>=6.2.0",
-  "chuk-sessions>=0.5.2",
-  "chuk-virtual-fs>=0.3.1",
+  "chuk-sessions>=0.6.1",
+  "chuk-virtual-fs>=0.5.1",
   "dotenv>=0.9.9",
   "asyncio>=3.4.3",
 ]

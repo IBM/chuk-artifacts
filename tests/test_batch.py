@@ -666,10 +666,9 @@ class TestBatchOperationsIntegration:
         session_id = "integration-session"
         mock_artifact_store._session_manager.allocate_session.return_value = session_id
         mock_artifact_store.generate_artifact_key.side_effect = (
-            lambda sid,
-            aid,
-            mime_type=None,
-            filename=None: f"grid/{mock_artifact_store.sandbox_id}/{sid}/{aid}"
+            lambda sid, aid, mime_type=None, filename=None: (
+                f"grid/{mock_artifact_store.sandbox_id}/{sid}/{aid}"
+            )
         )
 
         mock_s3 = AsyncMock()
