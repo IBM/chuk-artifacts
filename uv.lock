@@ -281,7 +281,7 @@ wheels = [
 
 [[package]]
 name = "chuk-artifacts"
-version = "0.11"
+version = "0.11.1"
 source = { editable = "." }
 dependencies = [
     { name = "aioboto3" },

@@ -3,7 +3,7 @@
 """
 Security and robustness tests for chuk_artifacts.
 
-Comprehensive testing for production readiness including security,
+Comprehensive testing including security,
 error handling, performance, and edge cases.
 """
 

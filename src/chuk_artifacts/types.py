@@ -60,7 +60,7 @@ class SessionProvider(str, Enum):
     Available session providers for metadata storage.
 
     - MEMORY: In-memory session storage (development/testing)
-    - REDIS: Redis-based session storage (production)
+    - REDIS: Redis-based session storage (persistent)
     """
 
     MEMORY = "memory"

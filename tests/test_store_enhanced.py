@@ -96,7 +96,7 @@ class TestStoreSecurity:
                     filename=malicious_input,
                 )
                 # Verify the filename was passed through (current behavior)
-                # In production, you might want to sanitize these
+                # You might want to sanitize these for untrusted input
                 store_call = store._core.store.call_args
                 assert store_call[1]["filename"] == malicious_input
             except Exception as e:

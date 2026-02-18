@@ -231,7 +231,7 @@ def testing_setup(artifacts_dir: str = "./test-artifacts") -> ArtifactStore:
 
 def production_setup(*, storage_type: str, **kwargs) -> ArtifactStore:
     """
-    Set up for production use.
+    Set up with cloud/persistent storage backends.
 
     Parameters
     ----------
@@ -275,7 +275,7 @@ from chuk_artifacts.config import testing_setup
 store = testing_setup("./test-data")  # Persists to filesystem
 ```
 
-**Production with S3:**
+**S3 with Redis:**
 ```python
 from chuk_artifacts.config import production_setup
 

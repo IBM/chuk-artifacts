@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/chuk-artifacts.svg)](https://pypi.org/project/chuk-artifacts/)
 [![Tests](https://img.shields.io/badge/tests-778%20passing-success.svg)](#testing)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen.svg)](#testing)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Async](https://img.shields.io/badge/async-await-green.svg)](https://docs.python.org/3/library/asyncio.html)
 
 CHUK Artifacts provides a **unified namespace architecture** where everything—blobs (artifacts) and workspaces (file collections)—is VFS-backed. Store ephemeral session files, persistent user projects, and shared resources with automatic access control, checkpoints, and a clean API that works the same for single files and entire directory trees.
@@ -72,7 +72,7 @@ chuk-sessions    →  session-based scope isolation for namespaces
 - **Consistent storage** across all CHUK components
 - **Unified access patterns** for AI tools, planners, and MCP servers
 - **Automatic isolation** prevents cross-session data leakage
-- **Production-ready** from development to deployment
+- **Reliable** from development to deployment
 
 ---
 
@@ -626,7 +626,7 @@ See [examples/04_legacy_api_compatibility.py](examples/04_legacy_api_compatibili
 
 ## Configuration
 
-### 🏭 Production Deployment Patterns
+### 🏭 Deployment Patterns
 
 Choose the right storage backend for your use case:
 
@@ -654,7 +654,7 @@ export SQLITE_DB_PATH=/data/artifacts.db
 # Good for: Desktop apps, portable storage, offline-first
 ```
 
-**Production / Cloud:**
+**Cloud / Distributed:**
 ```python
 # S3 provider with Redis standalone
 export ARTIFACT_PROVIDER=vfs-s3
@@ -665,7 +665,7 @@ export SESSION_REDIS_URL=redis://prod-redis:6379/0
 # Good for: Multi-tenant SaaS, distributed systems, high scale
 ```
 
-**High-Availability Production:**
+**High-Availability:**
 ```python
 # S3 provider with Redis Cluster
 export ARTIFACT_PROVIDER=vfs-s3
@@ -711,7 +711,7 @@ export ARTIFACT_PROVIDER=vfs-filesystem
 # SQLite (for portable database)
 export ARTIFACT_PROVIDER=vfs-sqlite
 
-# S3 (for production)
+# S3 (persistent cloud storage)
 export ARTIFACT_PROVIDER=vfs-s3
 export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
@@ -724,11 +724,11 @@ export AWS_DEFAULT_REGION=us-east-1
 # Memory (default)
 export SESSION_PROVIDER=memory
 
-# Redis Standalone (for production)
+# Redis Standalone (persistent)
 export SESSION_PROVIDER=redis
 export SESSION_REDIS_URL=redis://localhost:6379/0
 
-# Redis Cluster (for high-availability production - auto-detected)
+# Redis Cluster (high-availability - auto-detected)
 export SESSION_PROVIDER=redis
 export SESSION_REDIS_URL=redis://node1:7000,node2:7001,node3:7002
 
@@ -741,7 +741,7 @@ export REDIS_TLS_INSECURE=1  # Set to 1 to skip cert verification (dev only)
 - Automatically detected from comma-separated URL format
 - High availability with automatic failover
 - Horizontal scaling across multiple nodes
-- Production-ready with proper error handling
+- Robust with proper error handling
 
 ### Programmatic Configuration
 
@@ -752,7 +752,7 @@ from chuk_artifacts.config import configure_memory, configure_s3, configure_redi
 config = configure_memory()
 store = ArtifactStore(**config)
 
-# Production with S3 and Redis standalone
+# S3 with Redis standalone
 config = configure_s3(
     bucket="my-artifacts",
     region="us-east-1",
@@ -761,7 +761,7 @@ config = configure_s3(
 configure_redis_session("redis://localhost:6379/0")
 store = ArtifactStore(**config)
 
-# Production with S3 and Redis Cluster
+# S3 with Redis Cluster
 config = configure_s3(
     bucket="my-artifacts",
     region="us-east-1",
@@ -775,7 +775,7 @@ store = ArtifactStore(**config)
 
 ## ⚡ Performance
 
-CHUK Artifacts is designed for production performance:
+CHUK Artifacts is designed for high performance:
 
 **Memory Provider:**
 - Nanosecond to microsecond operations
@@ -790,7 +790,7 @@ CHUK Artifacts is designed for production performance:
 **S3 Provider:**
 - Uses streaming + zero-copy writes
 - Parallel uploads for large files
-- Production-proven at scale
+- Battle-tested at scale
 
 **SQLite Provider:**
 - Fast for small to medium workspaces
@@ -864,7 +864,7 @@ async def test_my_feature():
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Apache 2.0 - see [LICENSE](LICENSE) for details.
 
 ---
 
@@ -883,9 +883,9 @@ Contributions welcome! Please:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/chrishayuk/chuk-artifacts/issues)
+- **Issues**: [GitHub Issues](https://github.com/chuk-ai/chuk-artifacts/issues)
 - **Documentation**: [examples/](examples/)
-- **Discussions**: [GitHub Discussions](https://github.com/chrishayuk/chuk-artifacts/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/chuk-ai/chuk-artifacts/discussions)
 
 ---
 
