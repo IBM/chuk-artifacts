@@ -134,12 +134,16 @@ class ArtifactStore:
         self._closed = False
 
         # Storage provider
-        storage_provider_str: str = storage_provider or os.getenv("ARTIFACT_PROVIDER", "memory")
+        storage_provider_str: str = storage_provider or os.getenv(
+            "ARTIFACT_PROVIDER", "memory"
+        )
         self._s3_factory = self._load_storage_provider(storage_provider_str)
         self._storage_provider_name: str = storage_provider_str
 
         # Session provider
-        session_provider_str: str = session_provider or os.getenv("SESSION_PROVIDER", "memory")
+        session_provider_str: str = session_provider or os.getenv(
+            "SESSION_PROVIDER", "memory"
+        )
         self._session_factory = self._load_session_provider(session_provider_str)
         self._session_provider_name: str = session_provider_str
 
@@ -621,8 +625,60 @@ class ArtifactStore:
     async def list_by_session(
         self, session_id: str, limit: int = 100
     ) -> List[ArtifactMetadata]:
-        """List artifacts in session."""
+        """List artifacts belonging to a specific session.
+
+        Results are scoped to ``session_id``; no other session's artifacts are
+        returned.  Callers should pass the session that belongs to the current
+        user — the session ID itself acts as the isolation token here.
+        """
         return await self._metadata.list_by_session(session_id, limit)
+
+    async def list_by_user(
+        self,
+        user_id: str,
+        *,
+        mime_prefix: Optional[str] = None,
+        meta_filter: Optional[Dict[str, Any]] = None,
+        limit: int = 100,
+    ) -> List[ArtifactMetadata]:
+        """List all user-scoped artifacts belonging to ``user_id``.
+
+        This is the canonical way for MCP tools to enumerate a user's persistent
+        artifacts across sessions.  Results are strictly limited to objects stored
+        under ``grid/{sandbox_id}/users/{user_id}/`` — no other user's artifacts
+        are ever returned.
+
+        Args:
+            user_id: The user whose artifacts to list (required).
+            mime_prefix: Optional MIME type filter (e.g. ``"image/"``).
+            meta_filter: Optional metadata key/value filter (exact match).
+            limit: Maximum number of results (default 100).
+
+        Returns:
+            List of ``ArtifactMetadata`` owned by ``user_id``.
+
+        Raises:
+            ValueError: If ``user_id`` is empty.
+
+        Examples:
+            >>> # List all of alice's files
+            >>> files = await store.list_by_user("alice")
+
+            >>> # List only alice's spreadsheets
+            >>> sheets = await store.list_by_user(
+            ...     "alice",
+            ...     mime_prefix="application/vnd.openxmlformats-officedocument.spreadsheetml",
+            ... )
+        """
+        if not user_id:
+            raise ValueError("user_id is required for list_by_user()")
+
+        return await self.search(
+            user_id=user_id,
+            mime_prefix=mime_prefix,
+            meta_filter=meta_filter,
+            limit=limit,
+        )
 
     async def search(
         self,
@@ -634,42 +690,61 @@ class ArtifactStore:
         limit: int = 100,
     ) -> List[ArtifactMetadata]:
         """
-        Search artifacts by scope, user, MIME type, and metadata.
+        Search artifacts by user, MIME type, and metadata.
 
-        This is useful for finding user artifacts across all sessions, or searching
-        within specific scopes.
+        **Security requirement:** ``user_id`` is required unless ``scope="sandbox"``
+        (sandbox-shared artifacts are intentionally visible to all users in the sandbox).
+        Omitting ``user_id`` for any other scope raises ``ValueError`` — searching
+        across all users is not permitted and would expose one user's artifacts to
+        another.
 
         Args:
-            user_id: Filter by owner (user-scoped artifacts only)
-            scope: Filter by scope ("session", "user", or "sandbox")
-            mime_prefix: Filter by MIME type prefix (e.g., "image/" for all images)
-            meta_filter: Filter by custom metadata (exact match)
-            limit: Maximum number of results
+            user_id: Owner whose artifacts to search. Required unless
+                ``scope="sandbox"``.
+            scope: Restrict to ``"user"`` (default when user_id given), or
+                ``"sandbox"`` (shared artifacts, no user_id required).
+                ``"session"`` always returns an empty list — use
+                ``list_by_session()`` instead.
+            mime_prefix: Filter by MIME type prefix (e.g. ``"image/"``).
+            meta_filter: Filter by custom metadata key/value pairs (exact match).
+            limit: Maximum number of results.
 
         Returns:
-            List of matching artifacts
+            List of matching artifacts.
+
+        Raises:
+            ValueError: If ``user_id`` is absent and ``scope`` is not ``"sandbox"``.
 
         Examples:
-            >>> # Find all user's artifacts across sessions
-            >>> artifacts = await store.search(user_id="alice", scope="user")
-
-            >>> # Find all images for a user
-            >>> images = await store.search(
+            >>> # Find all of alice's spreadsheets
+            >>> sheets = await store.search(
             ...     user_id="alice",
-            ...     scope="user",
-            ...     mime_prefix="image/"
+            ...     mime_prefix="application/vnd.openxmlformats-officedocument.spreadsheetml",
             ... )
 
-            >>> # Find by custom metadata
-            >>> artifacts = await store.search(
-            ...     user_id="alice",
-            ...     meta_filter={"project": "Q4-deck"}
-            ... )
+            >>> # Find sandbox-shared artifacts (no user_id needed)
+            >>> shared = await store.search(scope="sandbox")
 
         Note:
-            This method requires iterating through storage keys. For large datasets,
-            consider using a proper search index (Elasticsearch, Typesense, etc.).
+            For large datasets, consider maintaining a dedicated search index
+            (Elasticsearch, Typesense, etc.) rather than scanning storage keys.
         """
+        # scope="session" always returns empty — session listing needs list_by_session().
+        if scope == "session":
+            logger.warning(
+                "search() does not support scope='session'; use list_by_session() instead"
+            )
+            return []
+
+        # Block cross-user scans: caller must either supply user_id or explicitly
+        # opt into sandbox scope (which is shared-by-design).
+        if not user_id and scope != "sandbox":
+            raise ValueError(
+                "user_id is required for search() unless scope='sandbox'. "
+                "Searching across all users is not permitted. "
+                "Use list_by_session() for session-scoped listing."
+            )
+
         results = []
 
         try:
@@ -682,23 +757,14 @@ class ArtifactStore:
                 else None
             )
 
-            # Build prefix based on scope and user
-            if scope_enum == StorageScope.USER and user_id:
-                prefix = f"grid/{self.sandbox_id}/users/{user_id}/"
-            elif scope_enum == StorageScope.SESSION:
-                # Can't search all sessions efficiently without index
-                logger.warning(
-                    "Searching session scope requires session_id, use list_by_session() instead"
-                )
-                return []
-            elif scope_enum == StorageScope.SANDBOX:
+            # Build prefix — always scoped to the requesting user or sandbox shared area.
+            # We deliberately never fall back to the whole-sandbox prefix so that one
+            # user cannot enumerate another user's artifacts.
+            if scope_enum == StorageScope.SANDBOX:
                 prefix = f"grid/{self.sandbox_id}/shared/"
-            elif user_id:
-                # Search user artifacts specifically
-                prefix = f"grid/{self.sandbox_id}/users/{user_id}/"
             else:
-                # Search entire sandbox (expensive!)
-                prefix = f"grid/{self.sandbox_id}/"
+                # Default: user-scoped artifacts only
+                prefix = f"grid/{self.sandbox_id}/users/{user_id}/"
 
             storage_ctx_mgr = self._s3_factory()
             async with storage_ctx_mgr as s3:
@@ -966,7 +1032,9 @@ class ArtifactStore:
 
         # Add copy tracking
         copy_meta["copied_from"] = artifact_id
-        copy_meta["copy_timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        copy_meta["copy_timestamp"] = (
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        )
 
         # Store the copy in the same session
         return await self.store(
@@ -1265,8 +1333,10 @@ class ArtifactStore:
 
         # Convert to proper models
         return StatsResponse(
-            storage_provider=stats_dict.get("storage_provider") or self._storage_provider_name,
-            session_provider=stats_dict.get("session_provider") or self._session_provider_name,
+            storage_provider=stats_dict.get("storage_provider")
+            or self._storage_provider_name,
+            session_provider=stats_dict.get("session_provider")
+            or self._session_provider_name,
             bucket=stats_dict.get("bucket") or self.bucket,
             sandbox_id=stats_dict.get("sandbox_id", self.sandbox_id),
             session_manager=SessionStats(**session_stats_dict)

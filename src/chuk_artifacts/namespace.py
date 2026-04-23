@@ -139,11 +139,15 @@ class NamespaceOperations:
             if provider_name == "filesystem":
                 # Use grid path for filesystem storage
                 if "root_path" not in config:
-                    _vfs_root = os.environ.get("CHUK_VFS_TMP_ROOT", tempfile.gettempdir())
+                    _vfs_root = os.environ.get(
+                        "CHUK_VFS_TMP_ROOT", tempfile.gettempdir()
+                    )
                     config["root_path"] = f"{_vfs_root}/vfs-namespaces/{grid_path}"
             elif provider_name == "sqlite":
                 if "db_path" not in config:
-                    _vfs_root = os.environ.get("CHUK_VFS_TMP_ROOT", tempfile.gettempdir())
+                    _vfs_root = os.environ.get(
+                        "CHUK_VFS_TMP_ROOT", tempfile.gettempdir()
+                    )
                     config["db_path"] = f"{_vfs_root}/vfs-namespaces/{namespace_id}.db"
 
             # 7. Create VFS
@@ -337,7 +341,11 @@ class NamespaceOperations:
             # For blobs: read from /_data
             target_path = "/_data"
             raw = await vfs.read_file(target_path)
-            data = raw if isinstance(raw, bytes) else (raw.encode() if isinstance(raw, str) else b"")
+            data = (
+                raw
+                if isinstance(raw, bytes)
+                else (raw.encode() if isinstance(raw, str) else b"")
+            )
             logger.debug(
                 "Read %d bytes from blob namespace %s", len(data), namespace_id
             )
@@ -348,7 +356,11 @@ class NamespaceOperations:
                 raise ValueError("path required for workspace namespaces")
 
             raw = await vfs.read_file(path)
-            data = raw if isinstance(raw, bytes) else (raw.encode() if isinstance(raw, str) else b"")
+            data = (
+                raw
+                if isinstance(raw, bytes)
+                else (raw.encode() if isinstance(raw, str) else b"")
+            )
             logger.debug(
                 "Read %d bytes from workspace namespace %s at %s",
                 len(data),

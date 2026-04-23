@@ -10,6 +10,10 @@ This example demonstrates how to integrate chuk-artifacts with an MCP server:
 """
 
 import asyncio
+import os
+
+os.environ.setdefault("ARTIFACT_PROVIDER", "memory")
+os.environ.setdefault("SESSION_PROVIDER", "memory")
 
 from chuk_artifacts import ArtifactStore, NamespaceType, StorageScope
 

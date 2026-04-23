@@ -117,7 +117,12 @@ class MetadataOperations:
             # Filter by filename prefix
             filtered: List[ArtifactMetadata] = []
             for file_meta in all_files:
-                filename = file_meta.filename or ""
+                # Support both ArtifactMetadata objects and plain dicts (e.g. in tests)
+                filename = (
+                    file_meta.get("filename", "")
+                    if isinstance(file_meta, dict)
+                    else (file_meta.filename or "")
+                )
                 if filename.startswith(prefix):
                     filtered.append(file_meta)
                     if len(filtered) >= limit:

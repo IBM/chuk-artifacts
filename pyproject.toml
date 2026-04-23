@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chuk-artifacts"
-version = "0.11.2"
+version = "0.11.3"
 description = "Chuk Artifacts provides a modular artifact storage system that works seamlessly across multiple storage backends (memory, filesystem, AWS S3, IBM Cloud Object Storage) with Redis or memory-based metadata caching and strict session-based security."
 readme = "README.md"
 license = {text = "Apache-2.0"}

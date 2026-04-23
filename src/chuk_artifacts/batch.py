@@ -61,7 +61,9 @@ class BatchOperations:
                     logger.error(f"Invalid batch item {i}: {e}")
                     validated_items.append(None)
             else:
-                validated_items.append(item if isinstance(item, BatchStoreItem) else None)
+                validated_items.append(
+                    item if isinstance(item, BatchStoreItem) else None
+                )
 
         # Ensure session is allocated using chuk_sessions
         if session_id is None:
@@ -104,7 +106,9 @@ class BatchOperations:
                     filename=item.filename,
                     bytes=len(item.data),
                     sha256=hashlib.sha256(item.data).hexdigest(),
-                    stored_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    stored_at=datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
                     ttl=ttl,
                     storage_provider=self.artifact_store._storage_provider_name,
                     session_provider=self.artifact_store._session_provider_name,

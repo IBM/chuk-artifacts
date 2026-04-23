@@ -12,6 +12,10 @@ Workspace namespaces are multi-file VFS-backed storage units perfect for:
 """
 
 import asyncio
+import os
+
+os.environ.setdefault("ARTIFACT_PROVIDER", "memory")
+os.environ.setdefault("SESSION_PROVIDER", "memory")
 
 from chuk_artifacts import ArtifactStore, NamespaceType, StorageScope
 

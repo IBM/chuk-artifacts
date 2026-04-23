@@ -6,6 +6,10 @@ The simplest example showing the unified "everything is VFS" architecture.
 """
 
 import asyncio
+import os
+
+os.environ.setdefault("ARTIFACT_PROVIDER", "memory")
+os.environ.setdefault("SESSION_PROVIDER", "memory")
 
 from chuk_artifacts import ArtifactStore, NamespaceType, StorageScope
 

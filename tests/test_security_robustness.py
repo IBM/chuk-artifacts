@@ -580,8 +580,8 @@ class TestConfigurationValidation:
                     data = await store.retrieve(artifact_id)
 
                     # Unicode should be preserved
-                    assert metadata["summary"] == test_case["summary"]
-                    assert metadata["filename"] == test_case["filename"]
+                    assert metadata.summary == test_case["summary"]
+                    assert metadata.filename == test_case["filename"]
                     assert data == test_case["data"]
 
                 except (UnicodeError, ValueError, Exception):
@@ -967,7 +967,7 @@ class TestRealIntegrationScenarios:
                     try:
                         # Should be able to access own artifacts
                         metadata = await store.metadata(artifact_id)
-                        assert metadata["session_id"] == session_id
+                        assert metadata.session_id == session_id
 
                         data = await store.retrieve(artifact_id)
                         assert user.encode() in data

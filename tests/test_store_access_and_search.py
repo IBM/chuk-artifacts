@@ -380,23 +380,15 @@ class TestSearchMethod:
         assert any(r.owner_id == "alice" for r in results)
 
     @pytest.mark.asyncio
-    async def test_search_entire_sandbox(self, store):
-        """Test searching entire sandbox (no scope or user_id)."""
-        # Store various artifacts
-        await store.store(
-            data=b"data 1",
-            mime="text/plain",
-            summary="file 1",
-            scope="user",
-            user_id="alice",
-        )
-        await store.store(
-            data=b"data 2",
-            mime="text/plain",
-            summary="file 2",
-            scope="sandbox",
-        )
+    async def test_search_without_user_id_raises(self, store):
+        """Searching without user_id (and not scope=sandbox) must raise ValueError."""
+        import pytest as _pytest
 
-        # Search entire sandbox
-        results = await store.search()
-        assert len(results) >= 2
+        with _pytest.raises(ValueError, match="user_id is required"):
+            await store.search()
+
+        with _pytest.raises(ValueError, match="user_id is required"):
+            await store.search(mime_prefix="text/")
+
+        with _pytest.raises(ValueError, match="user_id is required"):
+            await store.search(scope="user")

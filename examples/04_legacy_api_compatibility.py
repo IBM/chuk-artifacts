@@ -10,6 +10,10 @@ path forward to the unified API.
 """
 
 import asyncio
+import os
+
+os.environ.setdefault("ARTIFACT_PROVIDER", "memory")
+os.environ.setdefault("SESSION_PROVIDER", "memory")
 
 from chuk_artifacts import ArtifactStore, StorageScope
 

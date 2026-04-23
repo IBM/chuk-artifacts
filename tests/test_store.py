@@ -696,9 +696,7 @@ class TestFileOperations:
 
             # Mock datetime for consistent testing
             with patch("chuk_artifacts.store.datetime") as mock_datetime:
-                mock_datetime.utcnow.return_value.isoformat.return_value = (
-                    "2025-01-01T12:00:00"
-                )
+                mock_datetime.now.return_value.isoformat.return_value.replace.return_value = "2025-01-01T12:00:00Z"
 
                 result = await store.copy_file(
                     "artifact-123", new_filename="copy.txt", new_meta={"copied": True}
@@ -782,9 +780,9 @@ class TestFileOperations:
             )
 
             # Verify the returned record is updated
-            assert result["filename"] == "moved.txt"
-            assert result["meta"]["key"] == "value"
-            assert result["meta"]["moved"] is True
+            assert result.filename == "moved.txt"
+            assert result.meta["key"] == "value"
+            assert result.meta["moved"] is True
 
     @pytest.mark.asyncio
     async def test_move_file_cross_session_blocked(self, store):
@@ -1188,9 +1186,7 @@ class TestEdgeCases:
             mock_store.return_value = "artifact-copy"
 
             with patch("chuk_artifacts.store.datetime") as mock_datetime:
-                mock_datetime.utcnow.return_value.isoformat.return_value = (
-                    "2025-01-01T12:00:00"
-                )
+                mock_datetime.now.return_value.isoformat.return_value.replace.return_value = "2025-01-01T12:00:00Z"
 
                 await store.copy_file("artifact-123")
 

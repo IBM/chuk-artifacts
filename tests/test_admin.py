@@ -432,8 +432,10 @@ class TestCleanupAllExpired:
         # Mock datetime to control timestamp
         with patch("chuk_artifacts.admin.datetime") as mock_datetime:
             mock_now = Mock()
-            mock_now.isoformat.return_value = "2023-12-01T10:30:00"
-            mock_datetime.utcnow.return_value = mock_now
+            mock_now.isoformat.return_value.replace.return_value = (
+                "2023-12-01T10:30:00Z"
+            )
+            mock_datetime.now.return_value = mock_now
 
             result = await admin_operations.cleanup_all_expired()
 

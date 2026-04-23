@@ -455,7 +455,7 @@ class TestStoreIntegrationReal:
             # List artifacts in session
             artifacts = await store.list_by_session(session_id)
             assert len(artifacts) >= 1
-            assert any(art["artifact_id"] == artifact_id for art in artifacts)
+            assert any(art.artifact_id == artifact_id for art in artifacts)
 
             # Clean up
             deleted = await store.delete(artifact_id)

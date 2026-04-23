@@ -379,7 +379,9 @@ class PresignedURLOperations:
             sandbox_id=self.artifact_store.sandbox_id,
             session_id=session_id,
             artifact_id=artifact_id,
-            scope=request.scope.value if isinstance(request.scope, StorageScope) else str(request.scope),  # type: ignore[arg-type]
+            scope=request.scope.value
+            if isinstance(request.scope, StorageScope)
+            else str(request.scope),  # type: ignore[arg-type]
             owner_id=request.user_id,
             mime_type=request.mime_type,
             filename=request.filename,
@@ -416,7 +418,9 @@ class PresignedURLOperations:
                 "ttl": request.ttl,
                 "meta": request.meta or {},
                 "status": "uploading",
-                "initiated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "initiated_at": datetime.now(timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z"),
             }
 
             # Store in session provider with short TTL (24 hours for upload window)

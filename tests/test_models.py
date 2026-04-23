@@ -854,7 +854,7 @@ class TestArtifactMetadataDictAccess:
     """Test backwards-compatible dict-like access for ArtifactMetadata."""
 
     def test_getitem_attribute_access(self):
-        """Test __getitem__ for regular attributes."""
+        """Test __getitem__ for regular attributes (deprecated API)."""
         metadata = ArtifactMetadata(
             artifact_id="test123",
             session_id="session456",
@@ -869,10 +869,11 @@ class TestArtifactMetadataDictAccess:
             session_provider="memory",
         )
 
-        assert metadata["artifact_id"] == "test123"
-        assert metadata["session_id"] == "session456"
-        assert metadata["bytes"] == 100
-        assert metadata["mime"] == "text/plain"
+        with pytest.warns(DeprecationWarning):
+            assert metadata["artifact_id"] == "test123"
+            assert metadata["session_id"] == "session456"
+            assert metadata["bytes"] == 100
+            assert metadata["mime"] == "text/plain"
 
     def test_getitem_extra_fields(self):
         """Test __getitem__ for extra fields."""
@@ -893,7 +894,8 @@ class TestArtifactMetadataDictAccess:
         }
         metadata = ArtifactMetadata.model_validate(data)
 
-        assert metadata["custom_field"] == "custom_value"
+        with pytest.warns(DeprecationWarning):
+            assert metadata["custom_field"] == "custom_value"
 
     def test_getitem_missing_key(self):
         """Test __getitem__ raises KeyError for missing keys."""
@@ -911,8 +913,9 @@ class TestArtifactMetadataDictAccess:
             session_provider="memory",
         )
 
-        with pytest.raises(KeyError):
-            _ = metadata["nonexistent_field"]
+        with pytest.warns(DeprecationWarning):
+            with pytest.raises(KeyError):
+                _ = metadata["nonexistent_field"]
 
     def test_get_method(self):
         """Test get() method returns value or default."""
@@ -930,9 +933,10 @@ class TestArtifactMetadataDictAccess:
             session_provider="memory",
         )
 
-        assert metadata.get("artifact_id") == "test123"
-        assert metadata.get("nonexistent") is None
-        assert metadata.get("nonexistent", "default") == "default"
+        with pytest.warns(DeprecationWarning):
+            assert metadata.get("artifact_id") == "test123"
+            assert metadata.get("nonexistent") is None
+            assert metadata.get("nonexistent", "default") == "default"
 
     def test_keys_method(self):
         """Test keys() method returns all field names."""
@@ -950,10 +954,11 @@ class TestArtifactMetadataDictAccess:
             session_provider="memory",
         )
 
-        keys = metadata.keys()
-        assert "artifact_id" in keys
-        assert "session_id" in keys
-        assert "bytes" in keys
+        with pytest.warns(DeprecationWarning):
+            keys = metadata.keys()
+            assert "artifact_id" in keys
+            assert "session_id" in keys
+            assert "bytes" in keys
 
     def test_values_method(self):
         """Test values() method returns all field values."""
@@ -971,10 +976,11 @@ class TestArtifactMetadataDictAccess:
             session_provider="memory",
         )
 
-        values = list(metadata.values())
-        assert "test123" in values
-        assert "session456" in values
-        assert 100 in values
+        with pytest.warns(DeprecationWarning):
+            values = list(metadata.values())
+            assert "test123" in values
+            assert "session456" in values
+            assert 100 in values
 
     def test_items_method(self):
         """Test items() method returns key-value pairs."""
@@ -992,7 +998,8 @@ class TestArtifactMetadataDictAccess:
             session_provider="memory",
         )
 
-        items = dict(metadata.items())
+        with pytest.warns(DeprecationWarning):
+            items = dict(metadata.items())
         assert items["artifact_id"] == "test123"
         assert items["session_id"] == "session456"
         assert items["bytes"] == 100
@@ -1090,9 +1097,10 @@ class TestGridKeyComponentsDictAccess:
             artifact_id="artifact789",
         )
 
-        assert components["sandbox_id"] == "sandbox123"
-        assert components["session_id"] == "session456"
-        assert components["artifact_id"] == "artifact789"
+        with pytest.warns(DeprecationWarning):
+            assert components["sandbox_id"] == "sandbox123"
+            assert components["session_id"] == "session456"
+            assert components["artifact_id"] == "artifact789"
 
     def test_getitem_missing_key(self):
         """Test __getitem__ raises KeyError for missing keys."""
@@ -1102,8 +1110,9 @@ class TestGridKeyComponentsDictAccess:
             artifact_id="artifact789",
         )
 
-        with pytest.raises(KeyError):
-            _ = components["nonexistent"]
+        with pytest.warns(DeprecationWarning):
+            with pytest.raises(KeyError):
+                _ = components["nonexistent"]
 
     def test_get_method(self):
         """Test get() method returns value or default."""
@@ -1113,9 +1122,10 @@ class TestGridKeyComponentsDictAccess:
             artifact_id="artifact789",
         )
 
-        assert components.get("sandbox_id") == "sandbox123"
-        assert components.get("nonexistent") is None
-        assert components.get("nonexistent", "default") == "default"
+        with pytest.warns(DeprecationWarning):
+            assert components.get("sandbox_id") == "sandbox123"
+            assert components.get("nonexistent") is None
+            assert components.get("nonexistent", "default") == "default"
 
 
 # ============================================================================

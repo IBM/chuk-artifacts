@@ -140,8 +140,8 @@ async def test_filesystem_with_artifactstore():
 
             # Test metadata
             metadata = await store.metadata(artifact_id)
-            assert metadata["summary"] == "Filesystem test artifact"
-            print(f"  ✅ Got metadata: {metadata['summary']}")
+            assert metadata.summary == "Filesystem test artifact"
+            print(f"  ✅ Got metadata: {metadata.summary}")
 
             # Test file operations
             doc_id = await store.write_file(

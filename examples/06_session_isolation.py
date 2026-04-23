@@ -11,6 +11,10 @@ This example demonstrates how session isolation works in the unified VFS archite
 """
 
 import asyncio
+import os
+
+os.environ.setdefault("ARTIFACT_PROVIDER", "memory")
+os.environ.setdefault("SESSION_PROVIDER", "memory")
 
 from chuk_artifacts import ArtifactStore, NamespaceType, StorageScope
 

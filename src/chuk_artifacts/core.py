@@ -205,7 +205,9 @@ class CoreStorageOperations:
                 record.ttl = ttl
 
             # Add update timestamp
-            record.updated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            record.updated_at = (
+                datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            )
 
             # Store updated metadata
             session_ctx_mgr = self.artifact_store._session_factory()

@@ -62,7 +62,9 @@ class _FilesystemClient:
             "metadata": metadata,
             "size": size,
             "etag": etag,
-            "last_modified": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "last_modified": datetime.now(timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z"),
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         meta_json = json.dumps(meta_data, indent=2)

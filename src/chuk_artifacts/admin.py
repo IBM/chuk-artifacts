@@ -51,7 +51,9 @@ class AdminOperations:
                         OperationStatus.ERROR
                     )  # Use ERROR for backward compat
                     session_message = "Session store test failed"
-        except Exception as e:  # intentional: catch any connectivity failure during health check
+        except (
+            Exception
+        ) as e:  # intentional: catch any connectivity failure during health check
             session_status = OperationStatus.ERROR
             session_message = str(e)
 
@@ -65,7 +67,9 @@ class AdminOperations:
                 await s3.head_bucket(Bucket=self.artifact_store.bucket)
             storage_status = OperationStatus.OK  # Use OK for backward compat
             storage_details["bucket"] = self.artifact_store.bucket
-        except Exception as e:  # intentional: catch any connectivity failure during health check
+        except (
+            Exception
+        ) as e:  # intentional: catch any connectivity failure during health check
             storage_status = OperationStatus.ERROR
             storage_message = str(e)
 
@@ -94,7 +98,9 @@ class AdminOperations:
                     "status": "error",
                     "message": "Session validation failed",
                 }
-        except Exception as e:  # intentional: catch any connectivity failure during health check
+        except (
+            Exception
+        ) as e:  # intentional: catch any connectivity failure during health check
             session_manager_status = {"status": "error", "message": str(e)}
 
         # Determine overall status
@@ -151,7 +157,9 @@ class AdminOperations:
 
     async def cleanup_all_expired(self) -> Dict[str, Any]:
         """Clean up all expired resources."""
-        results: Dict[str, Any] = {"timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+        results: Dict[str, Any] = {
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        }
 
         # Clean up expired sessions using chuk_sessions
         try:

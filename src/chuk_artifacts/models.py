@@ -1,7 +1,16 @@
 # -*- coding: utf-8 -*-
 # chuk_artifacts/models.py
 import warnings
-from typing import Any, Dict, ItemsView, KeysView, Optional, AsyncIterator, Callable, ValuesView
+from typing import (
+    Any,
+    Dict,
+    ItemsView,
+    KeysView,
+    Optional,
+    AsyncIterator,
+    Callable,
+    ValuesView,
+)
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from .types import StorageScope
 

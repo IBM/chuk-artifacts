@@ -12,6 +12,10 @@ This example demonstrates batch operations for efficient bulk processing:
 """
 
 import asyncio
+import os
+
+os.environ.setdefault("ARTIFACT_PROVIDER", "memory")
+os.environ.setdefault("SESSION_PROVIDER", "memory")
 import time
 
 from chuk_artifacts import ArtifactStore, NamespaceType, StorageScope
