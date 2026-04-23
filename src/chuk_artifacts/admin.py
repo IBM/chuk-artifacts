@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -27,11 +27,8 @@ logger = logging.getLogger(__name__)
 class AdminOperations:
     """Handles administrative and debugging operations."""
 
-    def __init__(self, artifact_store: "ArtifactStore"):
-        # canonical reference
+    def __init__(self, artifact_store: "ArtifactStore") -> None:
         self.artifact_store = artifact_store
-
-        # backward-compat/consistency with other ops modules
         self.store = artifact_store
 
     async def validate_configuration(self) -> ValidationResponse:
@@ -54,8 +51,8 @@ class AdminOperations:
                         OperationStatus.ERROR
                     )  # Use ERROR for backward compat
                     session_message = "Session store test failed"
-        except Exception as e:
-            session_status = OperationStatus.ERROR  # Use ERROR for backward compat
+        except Exception as e:  # intentional: catch any connectivity failure during health check
+            session_status = OperationStatus.ERROR
             session_message = str(e)
 
         # Test storage provider
@@ -68,8 +65,8 @@ class AdminOperations:
                 await s3.head_bucket(Bucket=self.artifact_store.bucket)
             storage_status = OperationStatus.OK  # Use OK for backward compat
             storage_details["bucket"] = self.artifact_store.bucket
-        except Exception as e:
-            storage_status = OperationStatus.ERROR  # Use ERROR for backward compat
+        except Exception as e:  # intentional: catch any connectivity failure during health check
+            storage_status = OperationStatus.ERROR
             storage_message = str(e)
 
         # Test session manager (chuk_sessions) - backward compat
@@ -97,7 +94,7 @@ class AdminOperations:
                     "status": "error",
                     "message": "Session validation failed",
                 }
-        except Exception as e:
+        except Exception as e:  # intentional: catch any connectivity failure during health check
             session_manager_status = {"status": "error", "message": str(e)}
 
         # Determine overall status
@@ -127,7 +124,7 @@ class AdminOperations:
                 message=session_message,
             ),
             overall=overall,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             session_manager=session_manager_status,
         )
 
@@ -152,9 +149,9 @@ class AdminOperations:
 
         return base_stats
 
-    async def cleanup_all_expired(self) -> Dict[str, int]:
+    async def cleanup_all_expired(self) -> Dict[str, Any]:
         """Clean up all expired resources."""
-        results = {"timestamp": datetime.utcnow().isoformat() + "Z"}
+        results: Dict[str, Any] = {"timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
 
         # Clean up expired sessions using chuk_sessions
         try:
@@ -166,9 +163,10 @@ class AdminOperations:
             results["session_cleanup_error"] = str(e)
             results["expired_sessions_cleaned"] = 0
 
-        # TODO: Add artifact cleanup based on TTL
-        # This would require scanning metadata to find expired artifacts
-        results["expired_artifacts_cleaned"] = 0  # Placeholder
+        # Artifact metadata TTLs are enforced by the session provider (Redis/memory setex),
+        # so expired entries are evicted automatically. Blob objects in S3/filesystem
+        # should be managed via provider-level lifecycle policies (e.g., S3 object expiry).
+        results["expired_artifacts_cleaned"] = 0
 
         return results
 

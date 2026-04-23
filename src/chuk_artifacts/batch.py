@@ -11,8 +11,8 @@ import uuid
 import hashlib
 import logging
 import asyncio
-from datetime import datetime
-from typing import Any, Dict, List, TYPE_CHECKING
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .store import ArtifactStore
@@ -28,7 +28,7 @@ _DEFAULT_TTL = 900
 class BatchOperations:
     """Handles batch operations for multiple artifacts."""
 
-    def __init__(self, artifact_store: "ArtifactStore"):
+    def __init__(self, artifact_store: "ArtifactStore") -> None:
         self.artifact_store = artifact_store
 
     async def store_batch(
@@ -36,7 +36,7 @@ class BatchOperations:
         items: List[BatchStoreItem] | List[Dict[str, Any]],
         session_id: str | None = None,
         ttl: int = _DEFAULT_TTL,
-    ) -> List[str]:
+    ) -> List[Optional[str]]:
         """
         Store multiple artifacts in a batch operation.
 
@@ -52,17 +52,16 @@ class BatchOperations:
             raise ArtifactStoreError("Store is closed")
 
         # Validate and convert items to BatchStoreItem if needed
-        validated_items = []
+        validated_items: List[Optional[BatchStoreItem]] = []
         for i, item in enumerate(items):
             if isinstance(item, dict):
                 try:
                     validated_items.append(BatchStoreItem(**item))
-                except Exception as e:
+                except (ValueError, TypeError) as e:
                     logger.error(f"Invalid batch item {i}: {e}")
-                    # Add None for invalid items so they fail gracefully
                     validated_items.append(None)
             else:
-                validated_items.append(item)
+                validated_items.append(item if isinstance(item, BatchStoreItem) else None)
 
         # Ensure session is allocated using chuk_sessions
         if session_id is None:
@@ -72,8 +71,8 @@ class BatchOperations:
                 session_id=session_id
             )
 
-        artifact_ids = []
-        failed_items = []
+        artifact_ids: List[Optional[str]] = []
+        failed_items: List[int] = []
 
         for i, item in enumerate(validated_items):
             try:
@@ -105,7 +104,7 @@ class BatchOperations:
                     filename=item.filename,
                     bytes=len(item.data),
                     sha256=hashlib.sha256(item.data).hexdigest(),
-                    stored_at=datetime.utcnow().isoformat() + "Z",
+                    stored_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     ttl=ttl,
                     storage_provider=self.artifact_store._storage_provider_name,
                     session_provider=self.artifact_store._session_provider_name,
@@ -134,10 +133,10 @@ class BatchOperations:
         return artifact_ids
 
     async def _store_with_retry(
-        self, data: bytes, key: str, mime: str, filename: str, session_id: str
-    ):
+        self, data: bytes, key: str, mime: str, filename: Optional[str], session_id: str
+    ) -> None:
         """Store data with retry logic (copied from core for batch operations)."""
-        last_exception = None
+        last_exception: Optional[Exception] = None
 
         for attempt in range(self.artifact_store.max_retries):
             try:
@@ -170,4 +169,6 @@ class BatchOperations:
                         f"All {self.artifact_store.max_retries} batch storage attempts failed"
                     )
 
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise ArtifactStoreError("All batch storage retries failed")

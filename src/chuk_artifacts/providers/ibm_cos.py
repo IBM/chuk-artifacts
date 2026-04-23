@@ -61,9 +61,9 @@ def factory(
             "or generate an HMAC key for your COS instance."
         )
 
-    def _make() -> AsyncContextManager:
+    def _make() -> AsyncContextManager:  # type: ignore[type-arg]
         session = aioboto3.Session()
-        return session.client(
+        return session.client(  # type: ignore[no-any-return]
             "s3",
             endpoint_url=endpoint_url,
             region_name=region,
@@ -96,11 +96,12 @@ def client(
     )
 
     if not region:
-        if "us-south" in endpoint_url:
+        ep = endpoint_url or ""
+        if "us-south" in ep:
             region = "us-south"
-        elif "us-east" in endpoint_url:
+        elif "us-east" in ep:
             region = "us-east"
-        elif "eu-gb" in endpoint_url:
+        elif "eu-gb" in ep:
             region = "eu-gb"
         else:
             region = "us-south"

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # chuk_artifacts/models.py
-from typing import Any, Dict, Optional, AsyncIterator, Callable
+import warnings
+from typing import Any, Dict, ItemsView, KeysView, Optional, AsyncIterator, Callable, ValuesView
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from .types import StorageScope
 
@@ -92,34 +93,54 @@ class ArtifactMetadata(BaseModel):
         return v
 
     # Backwards compatibility: dict-like access
+    # Deprecated — use attribute access (metadata.key) instead.
     def __getitem__(self, key: str) -> Any:
-        """Support dict-style access for backwards compatibility."""
+        warnings.warn(
+            "Dict-style access on ArtifactMetadata is deprecated; use attribute access instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
             return getattr(self, key)
         except AttributeError:
-            # Check in extra fields (allowed by extra="allow")
             extra = getattr(self, "__pydantic_extra__", None)
             if extra and key in extra:
                 return extra[key]
             raise KeyError(key)
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Support dict.get() for backwards compatibility."""
+        warnings.warn(
+            "Dict-style access on ArtifactMetadata is deprecated; use attribute access instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
-            return self[key]
-        except KeyError:
+            return getattr(self, key)
+        except AttributeError:
             return default
 
-    def keys(self):
-        """Support dict.keys() for backwards compatibility."""
+    def keys(self) -> KeysView[str]:
+        warnings.warn(
+            "Dict-style access on ArtifactMetadata is deprecated; use model_dump() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.model_dump().keys()
 
-    def values(self):
-        """Support dict.values() for backwards compatibility."""
+    def values(self) -> ValuesView[Any]:
+        warnings.warn(
+            "Dict-style access on ArtifactMetadata is deprecated; use model_dump() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.model_dump().values()
 
-    def items(self):
-        """Support dict.items() for backwards compatibility."""
+    def items(self) -> ItemsView[str, Any]:
+        warnings.warn(
+            "Dict-style access on ArtifactMetadata is deprecated; use model_dump() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.model_dump().items()
 
 
@@ -149,18 +170,27 @@ class GridKeyComponents(BaseModel):
         return v
 
     # Backwards compatibility: dict-like access
+    # Deprecated — use attribute access (components.sandbox_id) instead.
     def __getitem__(self, key: str) -> Any:
-        """Support dict-style access for backwards compatibility."""
+        warnings.warn(
+            "Dict-style access on GridKeyComponents is deprecated; use attribute access instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
             return getattr(self, key)
         except AttributeError:
             raise KeyError(key)
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Support dict.get() for backwards compatibility."""
+        warnings.warn(
+            "Dict-style access on GridKeyComponents is deprecated; use attribute access instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
-            return self[key]
-        except KeyError:
+            return getattr(self, key)
+        except AttributeError:
             return default
 
 

@@ -12,7 +12,7 @@ import hashlib
 import time
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, TYPE_CHECKING, AsyncIterator, Callable
 
 if TYPE_CHECKING:
@@ -25,6 +25,7 @@ from .exceptions import (
     ArtifactNotFoundError,
 )
 from .models import ArtifactMetadata
+from .types import StorageScope
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ _DEFAULT_TTL = 900
 class CoreStorageOperations:
     """Clean core storage operations with grid architecture."""
 
-    def __init__(self, artifact_store: "ArtifactStore"):
+    def __init__(self, artifact_store: "ArtifactStore") -> None:
         self.artifact_store = artifact_store
 
     async def store(
@@ -47,8 +48,8 @@ class CoreStorageOperations:
         filename: str | None = None,
         session_id: str,  # Required - no more optional sessions
         ttl: int = _DEFAULT_TTL,
-        scope: str = "session",  # "session", "user", or "sandbox"
-        owner_id: str | None = None,  # user_id for user-scoped artifacts
+        scope: StorageScope = StorageScope.SESSION,
+        owner_id: str | None = None,
     ) -> str:
         """Store artifact with grid key generation and scope support."""
         if self.artifact_store._closed:
@@ -64,12 +65,10 @@ class CoreStorageOperations:
             sandbox_id=self.artifact_store.sandbox_id,
             session_id=session_id,
             artifact_id=artifact_id,
-            scope=scope,
+            scope=scope.value,
             owner_id=owner_id,
             mime_type=mime,
             filename=filename,
-            # use_legacy_session_format defaults to False (new format)
-            # parse() handles reading both legacy and new formats
         )
 
         try:
@@ -88,7 +87,7 @@ class CoreStorageOperations:
                 filename=filename,
                 bytes=len(data),
                 sha256=hashlib.sha256(data).hexdigest(),
-                stored_at=datetime.utcnow().isoformat() + "Z",
+                stored_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 ttl=ttl,
                 storage_provider=self.artifact_store._storage_provider_name,
                 session_provider=self.artifact_store._session_provider_name,
@@ -206,7 +205,7 @@ class CoreStorageOperations:
                 record.ttl = ttl
 
             # Add update timestamp
-            record.updated_at = datetime.utcnow().isoformat() + "Z"
+            record.updated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
             # Store updated metadata
             session_ctx_mgr = self.artifact_store._session_factory()
@@ -252,7 +251,7 @@ class CoreStorageOperations:
                             f"SHA256 mismatch: {record.sha256} != {computed}"
                         )
 
-                return data
+                return bytes(data)  # cast from Any to bytes
 
         except Exception as e:
             logger.error(f"Retrieval failed for {artifact_id}: {e}")
@@ -268,7 +267,7 @@ class CoreStorageOperations:
         filename: str | None = None,
         session_id: str,
         ttl: int = _DEFAULT_TTL,
-        scope: str = "session",
+        scope: StorageScope = StorageScope.SESSION,
         owner_id: str | None = None,
         content_length: Optional[int] = None,
         progress_callback: Optional[Callable[[int, Optional[int]], None]] = None,
@@ -287,7 +286,7 @@ class CoreStorageOperations:
             sandbox_id=self.artifact_store.sandbox_id,
             session_id=session_id,
             artifact_id=artifact_id,
-            scope=scope,
+            scope=scope.value,
             owner_id=owner_id,
             mime_type=mime,
             filename=filename,
@@ -317,7 +316,7 @@ class CoreStorageOperations:
                 filename=filename,
                 bytes=bytes_written,
                 sha256=sha256_hash,
-                stored_at=datetime.utcnow().isoformat() + "Z",
+                stored_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 ttl=ttl,
                 storage_provider=self.artifact_store._storage_provider_name,
                 session_provider=self.artifact_store._session_provider_name,
@@ -427,13 +426,13 @@ class CoreStorageOperations:
         data_stream: AsyncIterator[bytes],
         key: str,
         mime: str,
-        filename: str,
+        filename: Optional[str],
         session_id: str,
         content_length: Optional[int],
         progress_callback: Optional[Callable[[int, Optional[int]], None]],
     ) -> tuple[str, int]:
         """Stream upload with retry logic - returns (sha256, bytes_written)."""
-        last_exception = None
+        last_exception: Optional[Exception] = None
 
         for attempt in range(self.artifact_store.max_retries):
             try:
@@ -500,13 +499,15 @@ class CoreStorageOperations:
                     wait_time = 2**attempt
                     await asyncio.sleep(wait_time)
 
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise ArtifactStoreError("All stream upload retries failed")
 
     async def _store_with_retry(
-        self, data: bytes, key: str, mime: str, filename: str, session_id: str
-    ):
+        self, data: bytes, key: str, mime: str, filename: Optional[str], session_id: str
+    ) -> None:
         """Store with retry logic."""
-        last_exception = None
+        last_exception: Optional[Exception] = None
 
         for attempt in range(self.artifact_store.max_retries):
             try:
@@ -531,7 +532,9 @@ class CoreStorageOperations:
                     wait_time = 2**attempt
                     await asyncio.sleep(wait_time)
 
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise ArtifactStoreError("All storage retries failed")
 
     async def _get_record(self, artifact_id: str) -> ArtifactMetadata:
         """Get artifact metadata record from session provider."""

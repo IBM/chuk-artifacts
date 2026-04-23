@@ -19,7 +19,7 @@ import hashlib
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Any, Dict, Callable, AsyncContextManager, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 _ROOT = Path(os.getenv("ARTIFACT_FS_ROOT", "./artifacts")).expanduser()
 
@@ -62,8 +62,8 @@ class _FilesystemClient:
             "metadata": metadata,
             "size": size,
             "etag": etag,
-            "last_modified": datetime.utcnow().isoformat() + "Z",
-            "created_at": datetime.utcnow().isoformat() + "Z",
+            "last_modified": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         meta_json = json.dumps(meta_data, indent=2)
         await asyncio.to_thread(meta_path.write_text, meta_json, encoding="utf-8")
@@ -90,7 +90,7 @@ class _FilesystemClient:
         """Read metadata file."""
         try:
             content = await asyncio.to_thread(meta_path.read_text, encoding="utf-8")
-            return json.loads(content)
+            return json.loads(content)  # type: ignore[no-any-return]
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
@@ -404,7 +404,7 @@ class _FilesystemClient:
         return {
             "CopyObjectResult": {
                 "ETag": result["ETag"],
-                "LastModified": datetime.utcnow(),
+                "LastModified": datetime.now(timezone.utc),
             }
         }
 

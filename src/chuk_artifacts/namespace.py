@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -137,10 +139,12 @@ class NamespaceOperations:
             if provider_name == "filesystem":
                 # Use grid path for filesystem storage
                 if "root_path" not in config:
-                    config["root_path"] = f"/tmp/vfs-namespaces/{grid_path}"  # nosec B108
+                    _vfs_root = os.environ.get("CHUK_VFS_TMP_ROOT", tempfile.gettempdir())
+                    config["root_path"] = f"{_vfs_root}/vfs-namespaces/{grid_path}"
             elif provider_name == "sqlite":
                 if "db_path" not in config:
-                    config["db_path"] = f"/tmp/vfs-namespaces/{namespace_id}.db"  # nosec B108
+                    _vfs_root = os.environ.get("CHUK_VFS_TMP_ROOT", tempfile.gettempdir())
+                    config["db_path"] = f"{_vfs_root}/vfs-namespaces/{namespace_id}.db"
 
             # 7. Create VFS
             vfs = AsyncVirtualFileSystem(provider_name, **config)
@@ -332,7 +336,8 @@ class NamespaceOperations:
         if info.type == NamespaceType.BLOB:
             # For blobs: read from /_data
             target_path = "/_data"
-            data = await vfs.read_file(target_path)
+            raw = await vfs.read_file(target_path)
+            data = raw if isinstance(raw, bytes) else (raw.encode() if isinstance(raw, str) else b"")
             logger.debug(
                 "Read %d bytes from blob namespace %s", len(data), namespace_id
             )
@@ -342,7 +347,8 @@ class NamespaceOperations:
             if not path:
                 raise ValueError("path required for workspace namespaces")
 
-            data = await vfs.read_file(path)
+            raw = await vfs.read_file(path)
+            data = raw if isinstance(raw, bytes) else (raw.encode() if isinstance(raw, str) else b"")
             logger.debug(
                 "Read %d bytes from workspace namespace %s at %s",
                 len(data),

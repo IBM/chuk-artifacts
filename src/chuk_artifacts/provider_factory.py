@@ -112,8 +112,8 @@ def factory_for_env() -> Callable[[], AsyncContextManager]:
     if callable(factory_func):
         # If it's a function that returns a factory, call it
         try:
-            return factory_func()
+            return factory_func()  # type: ignore[no-any-return]
         except TypeError:
             # If it's already the factory function, return it directly
-            return factory_func
-    return factory_func
+            return factory_func  # type: ignore[no-any-return]
+    return factory_func  # type: ignore[no-any-return]

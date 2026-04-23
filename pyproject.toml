@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chuk-artifacts"
-version = "0.11.1"
+version = "0.11.2"
 description = "Chuk Artifacts provides a modular artifact storage system that works seamlessly across multiple storage backends (memory, filesystem, AWS S3, IBM Cloud Object Storage) with Redis or memory-based metadata caching and strict session-based security."
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -74,10 +74,10 @@ dev = [
 
 [tool.mypy]
 python_version = "3.11"
-warn_return_any = false
+warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
-no_implicit_optional = false
-check_untyped_defs = false
-disable_error_code = ["no-any-return", "misc", "assignment", "arg-type", "operator", "return-value"]
+no_implicit_optional = true
+check_untyped_defs = true
+disable_error_code = ["misc", "assignment"]

@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import (
     Any,
     Dict,
@@ -108,6 +108,12 @@ class ArtifactStore:
     - Grid paths only: grid/{sandbox_id}/{session_id}/{artifact_id}
     - Clean, focused implementation
     - Uses chuk_sessions for session management
+
+    Usage as an async context manager::
+
+        async with ArtifactStore() as store:
+            artifact_id = await store.store(data, mime="image/png", summary="photo")
+            data = await store.retrieve(artifact_id)
     """
 
     def __init__(
@@ -121,21 +127,21 @@ class ArtifactStore:
         max_retries: int = 3,
     ):
         # Configuration
-        self.bucket = bucket or os.getenv("ARTIFACT_BUCKET", "artifacts")
-        self.sandbox_id = sandbox_id or self._detect_sandbox_id()
+        self.bucket: str = bucket or os.getenv("ARTIFACT_BUCKET", "artifacts")
+        self.sandbox_id: str = sandbox_id or self._detect_sandbox_id()
         self.session_ttl_hours = session_ttl_hours
         self.max_retries = max_retries
         self._closed = False
 
         # Storage provider
-        storage_provider = storage_provider or os.getenv("ARTIFACT_PROVIDER", "memory")
-        self._s3_factory = self._load_storage_provider(storage_provider)
-        self._storage_provider_name = storage_provider
+        storage_provider_str: str = storage_provider or os.getenv("ARTIFACT_PROVIDER", "memory")
+        self._s3_factory = self._load_storage_provider(storage_provider_str)
+        self._storage_provider_name: str = storage_provider_str
 
         # Session provider
-        session_provider = session_provider or os.getenv("SESSION_PROVIDER", "memory")
-        self._session_factory = self._load_session_provider(session_provider)
-        self._session_provider_name = session_provider
+        session_provider_str: str = session_provider or os.getenv("SESSION_PROVIDER", "memory")
+        self._session_factory = self._load_session_provider(session_provider_str)
+        self._session_provider_name: str = session_provider_str
 
         # Session manager (now using chuk_sessions)
         self._session_manager = SessionManager(
@@ -855,9 +861,9 @@ class ArtifactStore:
         filename: str,
         mime: str = "text/plain",
         summary: str = "",
-        session_id: str = None,
-        user_id: str = None,
-        meta: Dict[str, Any] = None,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
         encoding: str = "utf-8",
         scope: str = "session",
         ttl: int = _DEFAULT_TTL,
@@ -896,13 +902,13 @@ class ArtifactStore:
 
     async def list_files(
         self, session_id: str, prefix: str = "", limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ArtifactMetadata]:
         """List files in session with optional prefix filter."""
         return await self._metadata.list_by_prefix(session_id, prefix, limit)
 
     async def get_directory_contents(
         self, session_id: str, directory_prefix: str = "", limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ArtifactMetadata]:
         """
         List files in a directory-like structure within a session.
         """
@@ -927,10 +933,10 @@ class ArtifactStore:
         self,
         artifact_id: str,
         *,
-        new_filename: str = None,
-        target_session_id: str = None,
-        new_meta: Dict[str, Any] = None,
-        summary: str = None,
+        new_filename: Optional[str] = None,
+        target_session_id: Optional[str] = None,
+        new_meta: Optional[Dict[str, Any]] = None,
+        summary: Optional[str] = None,
     ) -> str:
         """Copy a file WITHIN THE SAME SESSION only (security enforced)."""
         # Get original metadata to check session
@@ -960,7 +966,7 @@ class ArtifactStore:
 
         # Add copy tracking
         copy_meta["copied_from"] = artifact_id
-        copy_meta["copy_timestamp"] = datetime.utcnow().isoformat() + "Z"
+        copy_meta["copy_timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         # Store the copy in the same session
         return await self.store(
@@ -976,9 +982,9 @@ class ArtifactStore:
         self,
         artifact_id: str,
         *,
-        new_filename: str = None,
-        new_session_id: str = None,
-        new_meta: Dict[str, Any] = None,
+        new_filename: Optional[str] = None,
+        new_session_id: Optional[str] = None,
+        new_meta: Optional[Dict[str, Any]] = None,
     ) -> ArtifactMetadata:
         """Move/rename a file WITHIN THE SAME SESSION only (security enforced)."""
         # Get current metadata
@@ -1214,7 +1220,7 @@ class ArtifactStore:
         items: List[Dict[str, Any]],
         session_id: str | None = None,
         ttl: int = _DEFAULT_TTL,
-    ) -> List[str]:
+    ) -> List[Optional[str]]:
         """Store multiple artifacts in a batch operation."""
         return await self._batch.store_batch(items, session_id, ttl)
 
@@ -1226,11 +1232,11 @@ class ArtifactStore:
         self,
         artifact_id: str,
         *,
-        summary: str = None,
-        meta: Dict[str, Any] = None,
+        summary: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
         merge: bool = True,
-        **kwargs,
-    ) -> Dict[str, Any]:
+        **kwargs: Any,
+    ) -> ArtifactMetadata:
         """Update artifact metadata."""
         return await self._metadata.update_metadata(
             artifact_id, summary=summary, meta=meta, merge=merge, **kwargs
@@ -1238,7 +1244,7 @@ class ArtifactStore:
 
     async def extend_ttl(
         self, artifact_id: str, additional_seconds: int
-    ) -> Dict[str, Any]:
+    ) -> ArtifactMetadata:
         """Extend artifact TTL."""
         return await self._metadata.extend_ttl(artifact_id, additional_seconds)
 
@@ -1259,13 +1265,9 @@ class ArtifactStore:
 
         # Convert to proper models
         return StatsResponse(
-            storage_provider=stats_dict.get(
-                "storage_provider", self._storage_provider_name
-            ),
-            session_provider=stats_dict.get(
-                "session_provider", self._session_provider_name
-            ),
-            bucket=stats_dict.get("bucket", self.bucket),
+            storage_provider=stats_dict.get("storage_provider") or self._storage_provider_name,
+            session_provider=stats_dict.get("session_provider") or self._session_provider_name,
+            bucket=stats_dict.get("bucket") or self.bucket,
             sandbox_id=stats_dict.get("sandbox_id", self.sandbox_id),
             session_manager=SessionStats(**session_stats_dict)
             if session_stats_dict
@@ -1315,12 +1317,12 @@ class ArtifactStore:
         original_provider = os.environ.get("ARTIFACT_PROVIDER")
         try:
             os.environ["ARTIFACT_PROVIDER"] = name
-            return factory_for_env()
+            return factory_for_env()  # type: ignore[no-any-return]
         except ValueError:
             # If factory_for_env doesn't recognize it, try direct import
             try:
                 mod = import_module(f"chuk_artifacts.providers.{name}")
-                return mod.factory()
+                return mod.factory()  # type: ignore[no-any-return]
             except ModuleNotFoundError as exc:
                 available = [
                     "memory",
@@ -1349,7 +1351,7 @@ class ArtifactStore:
 
         try:
             mod = import_module(f"chuk_sessions.providers.{name}")
-            return mod.factory()
+            return mod.factory()  # type: ignore[no-any-return]
         except ModuleNotFoundError as exc:
             raise ValueError(f"Unknown session provider '{name}'") from exc
 
@@ -1363,10 +1365,10 @@ class ArtifactStore:
             self._closed = True
             logger.info("ArtifactStore closed")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "ArtifactStore":
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
 
     async def get_sandbox_info(self) -> SandboxInfo:
@@ -1385,8 +1387,6 @@ class ArtifactStore:
             - grid_prefix_pattern: The grid path pattern for this sandbox
             - created_at: Timestamp of when this info was retrieved
         """
-        from datetime import datetime
-
         # Get session manager stats if available
         session_stats_dict = {}
         try:
@@ -1409,7 +1409,7 @@ class ArtifactStore:
             session_ttl_hours=self.session_ttl_hours,
             max_retries=self.max_retries,
             grid_prefix_pattern=self.get_session_prefix_pattern(),
-            created_at=datetime.utcnow().isoformat() + "Z",
+            created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             session_stats=SessionStats(**session_stats_dict)
             if session_stats_dict
             else SessionStats(),

@@ -278,7 +278,8 @@ class StatsResponse(BaseModel):
         default_factory=SessionStats, description="Session manager stats"
     )
     storage_stats: StorageStats = Field(
-        default_factory=StorageStats, description="Storage stats"
+        default_factory=StorageStats,  # type: ignore[arg-type]
+        description="Storage stats",
     )
     # Additional backward compatibility fields
     total_artifacts: Optional[int] = Field(
@@ -410,7 +411,8 @@ class SandboxInfo(BaseModel):
         default_factory=SessionStats, description="Session stats"
     )
     storage_stats: StorageStats = Field(
-        default_factory=StorageStats, description="Storage stats"
+        default_factory=StorageStats,  # type: ignore[arg-type]
+        description="Storage stats",
     )
     closed: bool = Field(default=False, description="Whether the store is closed")
 

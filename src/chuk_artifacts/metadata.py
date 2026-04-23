@@ -8,7 +8,7 @@ Now uses chuk_sessions for session management.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .store import ArtifactStore
@@ -106,7 +106,7 @@ class MetadataOperations:
 
     async def list_by_prefix(
         self, session_id: str, prefix: str = "", limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ArtifactMetadata]:
         """List artifacts with filename prefix filtering."""
         try:
             all_files = await self.list_by_session(session_id, limit * 2)
@@ -115,9 +115,9 @@ class MetadataOperations:
                 return all_files[:limit]
 
             # Filter by filename prefix
-            filtered = []
+            filtered: List[ArtifactMetadata] = []
             for file_meta in all_files:
-                filename = file_meta.get("filename", "")
+                filename = file_meta.filename or ""
                 if filename.startswith(prefix):
                     filtered.append(file_meta)
                     if len(filtered) >= limit:
@@ -133,10 +133,10 @@ class MetadataOperations:
         self,
         artifact_id: str,
         *,
-        summary: str = None,
-        meta: Dict[str, Any] = None,
+        summary: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
         merge: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> ArtifactMetadata:
         """Update artifact metadata."""
         try:

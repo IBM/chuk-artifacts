@@ -7,10 +7,11 @@ Now uses chuk_sessions for session management.
 
 from __future__ import annotations
 
+import ast
 import uuid
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ from .models import (
     MultipartUploadInitRequest,
     MultipartUploadCompleteRequest,
 )
+from .types import StorageScope
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +73,7 @@ class PresignedURLOperations:
                     },
                 )
 
-                return url
+                return url  # type: ignore[no-any-return]
 
         except (ArtifactNotFoundError, ArtifactExpiredError):
             raise
@@ -244,7 +246,7 @@ class PresignedURLOperations:
                 filename=filename,
                 bytes=file_size,
                 sha256=None,  # We don't have the hash since we didn't upload it directly
-                stored_at=datetime.utcnow().isoformat() + "Z",
+                stored_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 ttl=ttl,
                 storage_provider=self.artifact_store._storage_provider_name,
                 session_provider=self.artifact_store._session_provider_name,
@@ -377,7 +379,7 @@ class PresignedURLOperations:
             sandbox_id=self.artifact_store.sandbox_id,
             session_id=session_id,
             artifact_id=artifact_id,
-            scope=request.scope,
+            scope=request.scope.value if isinstance(request.scope, StorageScope) else str(request.scope),  # type: ignore[arg-type]
             owner_id=request.user_id,
             mime_type=request.mime_type,
             filename=request.filename,
@@ -414,7 +416,7 @@ class PresignedURLOperations:
                 "ttl": request.ttl,
                 "meta": request.meta or {},
                 "status": "uploading",
-                "initiated_at": datetime.utcnow().isoformat() + "Z",
+                "initiated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
 
             # Store in session provider with short TTL (24 hours for upload window)
@@ -496,8 +498,7 @@ class PresignedURLOperations:
             if raw is None:
                 raise ArtifactNotFoundError(f"Multipart upload {upload_id} not found")
 
-            import ast
-
+            # literal_eval is safe here: raw was written by this process via session.setex(str(dict))
             multipart_meta = ast.literal_eval(raw)
             key = multipart_meta["key"]
 
@@ -542,7 +543,7 @@ class PresignedURLOperations:
                 },
             )
 
-            return url
+            return url  # type: ignore[no-any-return]
 
         except ArtifactNotFoundError:
             raise
@@ -606,8 +607,7 @@ class PresignedURLOperations:
                     f"Multipart upload {request.upload_id} not found"
                 )
 
-            import ast
-
+            # literal_eval is safe here: raw was written by this process via session.setex(str(dict))
             multipart_meta = ast.literal_eval(raw)
 
             artifact_id = multipart_meta["artifact_id"]
@@ -693,7 +693,7 @@ class PresignedURLOperations:
                 filename=multipart_meta.get("filename"),
                 bytes=file_size,
                 sha256=None,  # Don't have hash for multipart uploads
-                stored_at=datetime.utcnow().isoformat() + "Z",
+                stored_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 ttl=multipart_meta.get("ttl", _DEFAULT_TTL),
                 storage_provider=self.artifact_store._storage_provider_name,
                 session_provider=self.artifact_store._session_provider_name,
@@ -722,7 +722,7 @@ class PresignedURLOperations:
                 },
             )
 
-            return artifact_id
+            return str(artifact_id)
 
         except ArtifactNotFoundError:
             raise
@@ -763,8 +763,7 @@ class PresignedURLOperations:
                 # Already cleaned up or doesn't exist
                 return True
 
-            import ast
-
+            # literal_eval is safe here: raw was written by this process via session.setex(str(dict))
             multipart_meta = ast.literal_eval(raw)
             key = multipart_meta["key"]
 
