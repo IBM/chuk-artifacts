@@ -76,7 +76,9 @@ async def test_factory_with_connection_string():
         "EndpointSuffix=core.windows.net"
     )
 
-    with patch.dict("os.environ", {"AZURE_STORAGE_CONNECTION_STRING": connection_string}):
+    with patch.dict(
+        "os.environ", {"AZURE_STORAGE_CONNECTION_STRING": connection_string}
+    ):
         with patch("azure.storage.blob.aio.BlobServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.close = AsyncMock()
@@ -84,6 +86,7 @@ async def test_factory_with_connection_string():
 
             # Import after patching
             import sys
+
             if "chuk_artifacts.providers.azure_blob" in sys.modules:
                 del sys.modules["chuk_artifacts.providers.azure_blob"]
 
@@ -101,10 +104,13 @@ async def test_factory_with_connection_string():
 @pytest.mark.asyncio
 async def test_factory_with_account_credentials():
     """Test factory initialization with account name and key."""
-    with patch.dict("os.environ", {
-        "AZURE_STORAGE_ACCOUNT_NAME": "testaccount",
-        "AZURE_STORAGE_ACCOUNT_KEY": "dGVzdGtleQ=="
-    }):
+    with patch.dict(
+        "os.environ",
+        {
+            "AZURE_STORAGE_ACCOUNT_NAME": "testaccount",
+            "AZURE_STORAGE_ACCOUNT_KEY": "dGVzdGtleQ==",
+        },
+    ):
         with patch("azure.storage.blob.aio.BlobServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.close = AsyncMock()
@@ -136,9 +142,7 @@ async def test_put_object(mock_blob_service_client, mock_blob_properties):
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
     result = await adapter.put_object(
@@ -146,7 +150,7 @@ async def test_put_object(mock_blob_service_client, mock_blob_properties):
         Key="test-file.txt",
         Body=b"test content",
         ContentType="text/plain",
-        Metadata={"author": "test"}
+        Metadata={"author": "test"},
     )
 
     # Verify result
@@ -171,15 +175,10 @@ async def test_get_object(mock_blob_service_client):
     blob_client.download_blob = AsyncMock(return_value=mock_download_stream)
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
-    result = await adapter.get_object(
-        Bucket="test-container",
-        Key="test-file.txt"
-    )
+    result = await adapter.get_object(Bucket="test-container", Key="test-file.txt")
 
     # Verify result
     assert result["Body"] == b"test content"
@@ -196,19 +195,16 @@ async def test_get_object_not_found(mock_blob_service_client):
 
     container_client = mock_blob_service_client.get_container_client.return_value
     blob_client = container_client.get_blob_client.return_value
-    blob_client.download_blob = AsyncMock(side_effect=ResourceNotFoundError("Not found"))
+    blob_client.download_blob = AsyncMock(
+        side_effect=ResourceNotFoundError("Not found")
+    )
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
     with pytest.raises(Exception, match="NoSuchKey"):
-        await adapter.get_object(
-            Bucket="test-container",
-            Key="nonexistent.txt"
-        )
+        await adapter.get_object(Bucket="test-container", Key="nonexistent.txt")
 
 
 @pytest.mark.asyncio
@@ -217,15 +213,10 @@ async def test_delete_object(mock_blob_service_client):
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
-    result = await adapter.delete_object(
-        Bucket="test-container",
-        Key="test-file.txt"
-    )
+    result = await adapter.delete_object(Bucket="test-container", Key="test-file.txt")
 
     # Verify result
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 204
@@ -242,15 +233,11 @@ async def test_list_objects_v2(mock_blob_service_client):
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
     result = await adapter.list_objects_v2(
-        Bucket="test-container",
-        Prefix="test/",
-        MaxKeys=1000
+        Bucket="test-container", Prefix="test/", MaxKeys=1000
     )
 
     # Verify result
@@ -267,15 +254,10 @@ async def test_head_object(mock_blob_service_client):
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
-    result = await adapter.head_object(
-        Bucket="test-container",
-        Key="test-file.txt"
-    )
+    result = await adapter.head_object(Bucket="test-container", Key="test-file.txt")
 
     # Verify result
     assert result["ContentType"] == "text/plain"
@@ -292,15 +274,13 @@ async def test_generate_presigned_url(mock_blob_service_client):
         mock_sas.return_value = "sig=abc123&st=2024-01-01&se=2024-01-02"
 
         adapter = AzureBlobAdapter(
-            mock_blob_service_client,
-            account_name="testaccount",
-            account_key="testkey"
+            mock_blob_service_client, account_name="testaccount", account_key="testkey"
         )
 
         url = await adapter.generate_presigned_url(
             operation="get_object",
             Params={"Bucket": "test-container", "Key": "test-file.txt"},
-            ExpiresIn=3600
+            ExpiresIn=3600,
         )
 
         # Verify URL structure
@@ -316,16 +296,14 @@ async def test_generate_presigned_url_without_credentials(mock_blob_service_clie
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name=None,
-        account_key=None
+        mock_blob_service_client, account_name=None, account_key=None
     )
 
     with pytest.raises(RuntimeError, match="Presigned URL generation requires"):
         await adapter.generate_presigned_url(
             operation="get_object",
             Params={"Bucket": "test-container", "Key": "test-file.txt"},
-            ExpiresIn=3600
+            ExpiresIn=3600,
         )
 
 
@@ -335,9 +313,7 @@ async def test_close(mock_blob_service_client):
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
     await adapter.close()
@@ -352,9 +328,7 @@ async def test_operations_fail_after_close(mock_blob_service_client):
     from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
 
     adapter = AzureBlobAdapter(
-        mock_blob_service_client,
-        account_name="testaccount",
-        account_key="testkey"
+        mock_blob_service_client, account_name="testaccount", account_key="testkey"
     )
 
     await adapter.close()
@@ -365,5 +339,5 @@ async def test_operations_fail_after_close(mock_blob_service_client):
             Key="test",
             Body=b"data",
             ContentType="text/plain",
-            Metadata={}
+            Metadata={},
         )

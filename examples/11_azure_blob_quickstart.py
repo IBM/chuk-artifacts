@@ -35,7 +35,7 @@ async def azure_blob_example():
     store = ArtifactStore(
         storage_provider="azure_blob",
         session_provider="memory",
-        bucket="my-artifacts-container"
+        bucket="my-artifacts-container",
     )
 
     print("✓ Connected to Azure Blob Storage")
@@ -45,7 +45,7 @@ async def azure_blob_example():
         data=b"Hello from Azure!",
         mime="text/plain",
         summary="Test artifact",
-        session_id="demo-session"
+        session_id="demo-session",
     )
     print(f"✓ Stored artifact: {artifact_id}")
 
@@ -85,15 +85,19 @@ async def main():
     print("=" * 50)
 
     # Check if credentials are set
-    if not (os.getenv("AZURE_STORAGE_CONNECTION_STRING") or
-            (os.getenv("AZURE_STORAGE_ACCOUNT_NAME") and
-             os.getenv("AZURE_STORAGE_ACCOUNT_KEY"))):
+    if not (
+        os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        or (
+            os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+            and os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
+        )
+    ):
         print("\n⚠️  Azure credentials not configured")
         print("Set AZURE_STORAGE_CONNECTION_STRING or")
         print("AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY")
         print("\nTo run this example:")
         print('  export AZURE_STORAGE_CONNECTION_STRING="..."')
-        print('  python examples/azure_blob_quickstart.py')
+        print("  python examples/azure_blob_quickstart.py")
         return
 
     try:

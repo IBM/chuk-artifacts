@@ -323,9 +323,7 @@ class AzureBlobAdapter:
         )
 
         # Construct full URL
-        blob_url = (
-            f"https://{self._account_name}.blob.core.windows.net/{bucket}/{key}"
-        )
+        blob_url = f"https://{self._account_name}.blob.core.windows.net/{bucket}/{key}"
         return f"{blob_url}?{sas_token}"
 
     async def close(self):
@@ -401,9 +399,7 @@ def factory(
                 extracted_name = account_name
         else:
             account_url = f"https://{account_name}.blob.core.windows.net"
-            client = BlobServiceClient(
-                account_url=account_url, credential=account_key
-            )
+            client = BlobServiceClient(account_url=account_url, credential=account_key)
             extracted_name = account_name
 
         # Wrap in adapter

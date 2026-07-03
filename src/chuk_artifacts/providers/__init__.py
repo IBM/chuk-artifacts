@@ -11,6 +11,7 @@ from . import s3, ibm_cos, memory, filesystem, vfs_adapter
 # Azure Blob Storage is optional - only import if azure-storage-blob is installed
 try:
     from . import azure_blob
+
     __all__ = ["s3", "ibm_cos", "memory", "filesystem", "vfs_adapter", "azure_blob"]
 except ImportError:
     __all__ = ["s3", "ibm_cos", "memory", "filesystem", "vfs_adapter"]
