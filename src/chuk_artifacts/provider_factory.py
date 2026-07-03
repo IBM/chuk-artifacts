@@ -9,6 +9,7 @@ Built-in providers
 • **fs**, **filesystem** - local filesystem rooted at `$ARTIFACT_FS_ROOT`
 • **s3** - plain AWS or any S3-compatible endpoint
 • **ibm_cos** - IBM COS, HMAC credentials (Signature V2)
+• **azure_blob** - Azure Blob Storage with connection string or account credentials
 
 Any other value is resolved dynamically as
 `chuk_artifacts.providers.<name>.factory()`.
@@ -82,6 +83,11 @@ def factory_for_env() -> Callable[[], AsyncContextManager]:
 
         return ibm_cos.factory()  # returns the zero-arg factory callable
 
+    if provider == "azure_blob":
+        from .providers import azure_blob
+
+        return azure_blob.factory()
+
     # ---------------------------------------------------------------------------
     # Fallback: dynamic lookup – allows user-supplied provider implementations.
     # ---------------------------------------------------------------------------
@@ -94,6 +100,7 @@ def factory_for_env() -> Callable[[], AsyncContextManager]:
             "filesystem",
             "s3",
             "ibm_cos",
+            "azure_blob",
             "vfs",
             "vfs-memory",
             "vfs-filesystem",
