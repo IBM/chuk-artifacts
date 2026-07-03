@@ -19,6 +19,7 @@ dependencies = [
   "chuk-virtual-fs>=0.5.1",
   "dotenv>=0.9.9",
   "asyncio>=3.4.3",
+  "azure-storage-blob>=12.19.0",
 ]
 
 [project.optional-dependencies]

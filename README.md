@@ -206,14 +206,25 @@ This is fundamentally more powerful than raw storage.
 pip install chuk-artifacts
 ```
 
+**With optional cloud storage providers:**
+
+```bash
+# Azure Blob Storage
+pip install chuk-artifacts[azure]
+
+# All extras together
+pip install chuk-artifacts[azure]
+```
+
 **Dependencies:**
 - `chuk-virtual-fs` - VFS layer (automatically installed)
 - `chuk-sessions` - Session management (automatically installed)
 
 **Optional:**
 - `redis` - For Redis session provider
-- `boto3` - For S3 storage backend
-- `ibm-cos-sdk` - For IBM Cloud Object Storage
+- `boto3` - For S3 storage backend (automatically installed)
+- `ibm-cos-sdk` - For IBM Cloud Object Storage (automatically installed)
+- `azure-storage-blob` - For Azure Blob Storage (install with `[azure]` extra)
 
 ---
 
@@ -716,6 +727,14 @@ export ARTIFACT_PROVIDER=vfs-s3
 export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_DEFAULT_REGION=us-east-1
+
+# Azure Blob Storage (persistent cloud storage)
+export ARTIFACT_PROVIDER=azure_blob
+export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
+# OR use account credentials:
+export AZURE_STORAGE_ACCOUNT_NAME=your_account
+export AZURE_STORAGE_ACCOUNT_KEY=your_key
+export ARTIFACT_BUCKET=your-container
 ```
 
 ### Session Providers
@@ -791,6 +810,12 @@ CHUK Artifacts is designed for high performance:
 - Uses streaming + zero-copy writes
 - Parallel uploads for large files
 - Battle-tested at scale
+
+**Azure Blob Storage Provider:**
+- Native async Azure SDK
+- Supports connection string or account credentials
+- Compatible with all Azure storage tiers
+- Presigned URL support via SAS tokens
 
 **SQLite Provider:**
 - Fast for small to medium workspaces
