@@ -37,9 +37,11 @@ def mock_blob_client(mock_blob_properties):
 @pytest.fixture
 def mock_container_client(mock_blob_client):
     """Mock Azure ContainerClient."""
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
     mock_client.create_container = AsyncMock()
-    mock_client.get_blob_client = AsyncMock(return_value=mock_blob_client)
+    mock_client.get_blob_client = MagicMock(
+        return_value=mock_blob_client
+    )  # Sync method
     mock_client.get_container_properties = AsyncMock()
 
     # Mock list_blobs to return async iterator
@@ -60,8 +62,10 @@ def mock_container_client(mock_blob_client):
 @pytest.fixture
 def mock_blob_service_client(mock_container_client):
     """Mock Azure BlobServiceClient."""
-    mock_client = AsyncMock()
-    mock_client.get_container_client = AsyncMock(return_value=mock_container_client)
+    mock_client = MagicMock()
+    mock_client.get_container_client = MagicMock(
+        return_value=mock_container_client
+    )  # Sync method
     mock_client.close = AsyncMock()
     return mock_client
 
