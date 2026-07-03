@@ -69,7 +69,7 @@ async def azure_with_programmatic_config():
     from chuk_artifacts import ArtifactStore
 
     # Programmatic configuration (no environment variables needed)
-    store = ArtifactStore(
+    _ = ArtifactStore(
         storage_provider="azure_blob",
         session_provider="memory",
         bucket="my-container",
