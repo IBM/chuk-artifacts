@@ -4,7 +4,7 @@
 Azure Blob Storage provider for artifact storage.
 
 Uses azure-storage-blob to provide Azure Blob Storage with S3-compatible interface.
-Supports connection string or account name/key authentication.
+Supports connection string, account name/key, or Azure AD authentication.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ class AzureBlobAdapter:
         blob_service_client,
         account_name: Optional[str] = None,
         account_key: Optional[str] = None,
+        use_azure_ad: bool = False,
     ):
         """
         Initialize adapter with Azure BlobServiceClient.
@@ -45,10 +46,13 @@ class AzureBlobAdapter:
             Storage account name (for SAS token generation)
         account_key : str, optional
             Storage account key (for SAS token generation)
+        use_azure_ad : bool, default False
+            Whether Azure AD authentication is being used
         """
         self._client = blob_service_client
         self._account_name = account_name
         self._account_key = account_key
+        self._use_azure_ad = use_azure_ad
         self._closed = False
         self._lock = asyncio.Lock()
 
@@ -286,18 +290,12 @@ class AzureBlobAdapter:
         ExpiresIn: int,  # noqa: N803
     ) -> str:
         """
-        Generate presigned URL using Azure SAS token.
+        Generate presigned URL using SAS token.
 
-        Note: Requires account_name and account_key to be set.
+        Uses User Delegation SAS (Azure AD) or Account Key SAS based on configuration.
         """
         if self._closed:
             raise RuntimeError("Client has been closed")
-
-        if not (self._account_name and self._account_key):
-            raise RuntimeError(
-                "Presigned URL generation requires AZURE_STORAGE_ACCOUNT_NAME "
-                "and AZURE_STORAGE_ACCOUNT_KEY to be set"
-            )
 
         from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 
@@ -312,15 +310,51 @@ class AzureBlobAdapter:
         else:
             raise ValueError(f"Unsupported operation: {operation}")
 
-        # Generate SAS token
-        sas_token = generate_blob_sas(
-            account_name=self._account_name,
-            container_name=bucket,
-            blob_name=key,
-            account_key=self._account_key,
-            permission=permission,
-            expiry=datetime.now(timezone.utc) + timedelta(seconds=ExpiresIn),
-        )
+        expiry = datetime.now(timezone.utc) + timedelta(seconds=ExpiresIn)
+
+        # Azure AD: User Delegation SAS
+        if self._use_azure_ad:
+            if not self._account_name:
+                raise RuntimeError(
+                    "User Delegation SAS requires AZURE_STORAGE_ACCOUNT_NAME to be set"
+                )
+
+            # Get user delegation key from Azure AD
+            key_start = datetime.now(timezone.utc)
+            key_expiry = key_start + timedelta(hours=1)
+
+            user_delegation_key = await self._client.get_user_delegation_key(
+                key_start_time=key_start,
+                key_expiry_time=key_expiry
+            )
+
+            # Generate SAS with delegation key
+            sas_token = generate_blob_sas(
+                account_name=self._account_name,
+                container_name=bucket,
+                blob_name=key,
+                user_delegation_key=user_delegation_key,  # Azure AD key
+                permission=permission,
+                expiry=expiry,
+            )
+
+        # Account Key: Standard SAS
+        else:
+            if not (self._account_name and self._account_key):
+                raise RuntimeError(
+                    "Presigned URL generation requires AZURE_STORAGE_ACCOUNT_NAME "
+                    "and AZURE_STORAGE_ACCOUNT_KEY, or Azure AD authentication"
+                )
+
+            # Generate SAS with account key
+            sas_token = generate_blob_sas(
+                account_name=self._account_name,
+                container_name=bucket,
+                blob_name=key,
+                account_key=self._account_key,  # Static key
+                permission=permission,
+                expiry=expiry,
+            )
 
         # Construct full URL
         blob_url = f"https://{self._account_name}.blob.core.windows.net/{bucket}/{key}"
@@ -338,6 +372,7 @@ def factory(
     connection_string: Optional[str] = None,
     account_name: Optional[str] = None,
     account_key: Optional[str] = None,
+    use_azure_ad: bool = False,
 ) -> Callable[[], AsyncContextManager]:
     """
     Create Azure Blob Storage client factory.
@@ -345,11 +380,14 @@ def factory(
     Parameters
     ----------
     connection_string : str, optional
-        Azure storage connection string (preferred method)
+        Azure storage connection string
     account_name : str, optional
-        Storage account name (alternative to connection_string)
+        Storage account name
     account_key : str, optional
-        Storage account key (alternative to connection_string)
+        Storage account key
+    use_azure_ad : bool, default False
+        Use Azure AD authentication instead of account key.
+        Requires Azure AD credentials configured (env vars, managed identity, or az cli).
 
     Returns
     -------
@@ -358,58 +396,97 @@ def factory(
 
     Environment Variables
     ---------------------
-    - AZURE_STORAGE_CONNECTION_STRING: Full connection string
-    - AZURE_STORAGE_ACCOUNT_NAME: Storage account name
-    - AZURE_STORAGE_ACCOUNT_KEY: Storage account key
+    Account Key Auth:
+      - AZURE_STORAGE_CONNECTION_STRING, or
+      - AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY
+
+    Azure AD Auth:
+      - AZURE_STORAGE_ACCOUNT_NAME (required)
+      - AZURE_USE_AD=true (to enable)
+      - Service Principal: AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID
+      - Or use Managed Identity (automatic on Azure VMs/AKS/Functions)
+      - Or use Azure CLI: az login
     """
+    # Check for Azure AD preference from environment
+    use_azure_ad = use_azure_ad or os.getenv("AZURE_USE_AD", "").lower() == "true"
+
     # Get configuration from parameters or environment
-    connection_string = connection_string or os.getenv(
-        "AZURE_STORAGE_CONNECTION_STRING"
-    )
+    connection_string = connection_string or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     account_name = account_name or os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
     account_key = account_key or os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
 
-    # Validate credentials
-    if not connection_string and not (account_name and account_key):
-        raise RuntimeError(
-            "Azure credentials missing. Set AZURE_STORAGE_CONNECTION_STRING "
-            "or AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY "
-            "environment variables."
-        )
+    # Validate credentials based on auth method
+    if use_azure_ad:
+        # Azure AD only needs account name
+        if not account_name:
+            raise RuntimeError(
+                "Azure AD authentication requires AZURE_STORAGE_ACCOUNT_NAME to be set"
+            )
+    else:
+        # Account key auth needs connection string OR (name + key)
+        if not connection_string and not (account_name and account_key):
+            raise RuntimeError(
+                "Azure credentials missing. Set AZURE_STORAGE_CONNECTION_STRING "
+                "or AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY, "
+                "or set AZURE_USE_AD=true for Azure AD authentication."
+            )
 
     @asynccontextmanager
     async def _ctx():
         from azure.storage.blob.aio import BlobServiceClient
 
-        # Create client based on credential type
-        if connection_string:
-            client = BlobServiceClient.from_connection_string(connection_string)
-            # Extract account name from connection string if needed
-            if not account_name:
+        account_url = f"https://{account_name}.blob.core.windows.net"
+
+        # Azure AD authentication
+        if use_azure_ad:
+            from azure.identity.aio import DefaultAzureCredential
+
+            credential = DefaultAzureCredential()
+            client = BlobServiceClient(account_url=account_url, credential=credential)
+
+            adapter = AzureBlobAdapter(
+                client,
+                account_name=account_name,
+                account_key=None,
+                use_azure_ad=True
+            )
+
+            try:
+                yield adapter
+            finally:
                 try:
-                    for part in connection_string.split(";"):
-                        if part.startswith("AccountName="):
-                            extracted_name = part.split("=", 1)[1]
-                            break
-                    else:
-                        extracted_name = None
-                except Exception:
-                    extracted_name = None
-            else:
-                extracted_name = account_name
+                    await adapter.close()
+                finally:
+                    await credential.close()
+
+        # Account key authentication (existing logic)
         else:
-            account_url = f"https://{account_name}.blob.core.windows.net"
-            client = BlobServiceClient(account_url=account_url, credential=account_key)
-            extracted_name = account_name
+            if connection_string:
+                client = BlobServiceClient.from_connection_string(connection_string)
+                # Extract account name from connection string if needed
+                extracted_name = account_name
+                if not extracted_name:
+                    try:
+                        for part in connection_string.split(";"):
+                            if part.startswith("AccountName="):
+                                extracted_name = part.split("=", 1)[1]
+                                break
+                    except Exception:
+                        extracted_name = None
+            else:
+                client = BlobServiceClient(account_url=account_url, credential=account_key)
+                extracted_name = account_name
 
-        # Wrap in adapter
-        adapter = AzureBlobAdapter(
-            client, account_name=extracted_name, account_key=account_key
-        )
+            adapter = AzureBlobAdapter(
+                client,
+                account_name=extracted_name,
+                account_key=account_key,
+                use_azure_ad=False
+            )
 
-        try:
-            yield adapter
-        finally:
-            await adapter.close()
+            try:
+                yield adapter
+            finally:
+                await adapter.close()
 
     return _ctx

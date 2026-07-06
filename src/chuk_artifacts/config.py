@@ -204,6 +204,128 @@ def configure_ibm_cos(
     return env_vars
 
 
+def configure_azure_blob(
+    *,
+    account_name: str,
+    account_key: str,
+    bucket: str = "artifacts",
+    session_provider: str = "memory",
+) -> Dict[str, str]:
+    """
+    Configure for Azure Blob Storage with account key authentication.
+
+    Parameters
+    ----------
+    account_name : str
+        Azure storage account name
+    account_key : str
+        Azure storage account key
+    bucket : str, default "artifacts"
+        Container name
+    session_provider : str
+        Session provider (memory or redis)
+
+    Returns
+    -------
+    dict
+        Environment variables that were set
+    """
+    # Normalize session_provider to enum value if needed
+    session_provider_value = (
+        session_provider
+        if isinstance(session_provider, str)
+        else session_provider.value
+        if isinstance(session_provider, SessionProvider)
+        else SessionProvider.MEMORY.value
+    )
+
+    from .types import StorageProvider
+
+    env_vars = {
+        "ARTIFACT_PROVIDER": StorageProvider.AZURE_BLOB.value,
+        "SESSION_PROVIDER": session_provider_value,
+        "AZURE_STORAGE_ACCOUNT_NAME": account_name,
+        "AZURE_STORAGE_ACCOUNT_KEY": account_key,
+        "ARTIFACT_BUCKET": bucket,
+    }
+
+    for key, value in env_vars.items():
+        os.environ[key] = value
+
+    return env_vars
+
+
+def configure_azure_blob_ad(
+    *,
+    account_name: str,
+    client_id: Optional[str] = None,
+    client_secret: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    bucket: str = "artifacts",
+    session_provider: str = "memory",
+) -> Dict[str, str]:
+    """
+    Configure Azure Blob Storage with Azure AD authentication.
+
+    Parameters
+    ----------
+    account_name : str
+        Azure storage account name
+    client_id : str, optional
+        Azure service principal client ID (if using service principal)
+    client_secret : str, optional
+        Azure service principal client secret (if using service principal)
+    tenant_id : str, optional
+        Azure tenant ID (if using service principal)
+    bucket : str, default "artifacts"
+        Container name
+    session_provider : str
+        Session provider (memory or redis)
+
+    Returns
+    -------
+    dict
+        Environment variables that were set
+
+    Notes
+    -----
+    If client credentials not provided, will use DefaultAzureCredential chain:
+    - Managed Identity (if on Azure VM/AKS/Functions)
+    - Azure CLI (if `az login` has been run)
+    - Environment variables (if AZURE_CLIENT_ID, etc. are set)
+    """
+    # Normalize session_provider to enum value if needed
+    session_provider_value = (
+        session_provider
+        if isinstance(session_provider, str)
+        else session_provider.value
+        if isinstance(session_provider, SessionProvider)
+        else SessionProvider.MEMORY.value
+    )
+
+    from .types import StorageProvider
+
+    env_vars = {
+        "ARTIFACT_PROVIDER": StorageProvider.AZURE_BLOB.value,
+        "SESSION_PROVIDER": session_provider_value,
+        "AZURE_STORAGE_ACCOUNT_NAME": account_name,
+        "AZURE_USE_AD": "true",
+        "ARTIFACT_BUCKET": bucket,
+    }
+
+    if client_id:
+        env_vars["AZURE_CLIENT_ID"] = client_id
+    if client_secret:
+        env_vars["AZURE_CLIENT_SECRET"] = client_secret
+    if tenant_id:
+        env_vars["AZURE_TENANT_ID"] = tenant_id
+
+    for key, value in env_vars.items():
+        os.environ[key] = value
+
+    return env_vars
+
+
 def create_store() -> ArtifactStore:
     """
     Create a new ArtifactStore instance with current environment configuration.
@@ -236,7 +358,7 @@ def production_setup(*, storage_type: str, **kwargs) -> ArtifactStore:
     Parameters
     ----------
     storage_type : str
-        Storage type: 's3', 'ibm_cos'
+        Storage type: 's3', 'ibm_cos', 'azure_blob', 'azure_blob_ad'
     **kwargs
         Configuration parameters for the chosen storage type
 
@@ -249,6 +371,10 @@ def production_setup(*, storage_type: str, **kwargs) -> ArtifactStore:
         configure_s3(**kwargs)
     elif storage_type == "ibm_cos":
         configure_ibm_cos(**kwargs)
+    elif storage_type == "azure_blob":
+        configure_azure_blob(**kwargs)
+    elif storage_type == "azure_blob_ad":
+        configure_azure_blob_ad(**kwargs)
     else:
         raise ValueError(f"Unknown storage type: {storage_type}")
 
