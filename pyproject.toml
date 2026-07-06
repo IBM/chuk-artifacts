@@ -20,6 +20,7 @@ dependencies = [
   "dotenv>=0.9.9",
   "asyncio>=3.4.3",
   "azure-storage-blob>=12.19.0",
+  "azure-identity>=1.15.0",
 ]
 
 [project.optional-dependencies]

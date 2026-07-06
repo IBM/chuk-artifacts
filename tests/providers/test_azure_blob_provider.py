@@ -7,7 +7,7 @@ These tests verify the provider implementation without requiring a real Azure ac
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 @pytest.fixture
@@ -344,4 +344,159 @@ async def test_operations_fail_after_close(mock_blob_service_client):
             Body=b"data",
             ContentType="text/plain",
             Metadata={},
+        )
+
+
+# Azure AD Authentication Tests
+
+
+@pytest.fixture
+def mock_azure_credential():
+    """Mock Azure AD DefaultAzureCredential."""
+    mock_cred = AsyncMock()
+    mock_cred.close = AsyncMock()
+    return mock_cred
+
+
+@pytest.fixture
+def mock_user_delegation_key():
+    """Mock user delegation key from Azure AD."""
+    mock_key = MagicMock()
+    mock_key.signed_oid = "user-oid-123"
+    mock_key.signed_tid = "tenant-id-456"
+    mock_key.signed_start = datetime.now(timezone.utc)
+    mock_key.signed_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_key.signed_service = "b"  # blob service
+    mock_key.signed_version = "2021-08-06"
+    mock_key.value = "delegation-key-value"
+    return mock_key
+
+
+@pytest.fixture
+def mock_blob_service_client_with_ad(mock_container_client, mock_user_delegation_key):
+    """Mock Azure BlobServiceClient with Azure AD support."""
+    mock_client = MagicMock()
+    mock_client.get_container_client = MagicMock(return_value=mock_container_client)
+    mock_client.get_user_delegation_key = AsyncMock(return_value=mock_user_delegation_key)
+    mock_client.close = AsyncMock()
+    return mock_client
+
+
+@pytest.mark.asyncio
+async def test_factory_with_azure_ad():
+    """Test factory initialization with Azure AD."""
+    with patch.dict(
+        "os.environ",
+        {
+            "AZURE_STORAGE_ACCOUNT_NAME": "testaccount",
+            "AZURE_USE_AD": "true",
+        },
+    ):
+        with patch("azure.identity.aio.DefaultAzureCredential") as mock_cred_class:
+            with patch("azure.storage.blob.aio.BlobServiceClient") as mock_client_class:
+                mock_cred = AsyncMock()
+                mock_cred.close = AsyncMock()
+                mock_cred_class.return_value = mock_cred
+
+                mock_client = AsyncMock()
+                mock_client.close = AsyncMock()
+                mock_client_class.return_value = mock_client
+
+                # Import after patching
+                import sys
+
+                if "chuk_artifacts.providers.azure_blob" in sys.modules:
+                    del sys.modules["chuk_artifacts.providers.azure_blob"]
+
+                from chuk_artifacts.providers.azure_blob import factory
+
+                # Create factory
+                client_factory = factory()
+
+                # Use context manager
+                async with client_factory() as client:
+                    assert client is not None
+                    assert client._use_azure_ad is True
+                    assert not client._closed
+
+                # Verify credential was created and closed
+                mock_cred_class.assert_called_once()
+                mock_cred.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_factory_azure_ad_missing_account_name():
+    """Test factory fails with Azure AD but missing account name."""
+    with patch.dict("os.environ", {"AZURE_USE_AD": "true"}, clear=True):
+        # Import after patching
+        import sys
+
+        if "chuk_artifacts.providers.azure_blob" in sys.modules:
+            del sys.modules["chuk_artifacts.providers.azure_blob"]
+
+        from chuk_artifacts.providers.azure_blob import factory
+
+        with pytest.raises(RuntimeError, match="Azure AD authentication requires"):
+            factory()
+
+
+@pytest.mark.asyncio
+async def test_generate_presigned_url_with_azure_ad(
+    mock_blob_service_client_with_ad, mock_user_delegation_key
+):
+    """Test generating presigned URL with Azure AD."""
+    from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
+
+    adapter = AzureBlobAdapter(
+        mock_blob_service_client_with_ad,
+        account_name="testaccount",
+        account_key=None,
+        use_azure_ad=True,
+    )
+
+    with patch("azure.storage.blob.generate_blob_sas") as mock_sas:
+        mock_sas.return_value = "sig=abc123&st=2024-01-01&se=2024-01-02"
+
+        url = await adapter.generate_presigned_url(
+            operation="get_object",
+            Params={"Bucket": "test-container", "Key": "test-file.txt"},
+            ExpiresIn=3600,
+        )
+
+        # Verify URL structure
+        assert "testaccount.blob.core.windows.net" in url
+        assert "test-container" in url
+        assert "test-file.txt" in url
+        assert "sig=" in url
+
+        # Verify get_user_delegation_key was called
+        mock_blob_service_client_with_ad.get_user_delegation_key.assert_called_once()
+
+        # Verify generate_blob_sas called with user_delegation_key
+        assert mock_sas.called
+        call_kwargs = mock_sas.call_args.kwargs
+        assert "user_delegation_key" in call_kwargs
+        assert call_kwargs["user_delegation_key"] == mock_user_delegation_key
+        assert "account_key" not in call_kwargs
+
+
+@pytest.mark.asyncio
+async def test_azure_ad_presigned_url_without_account_name(
+    mock_blob_service_client_with_ad,
+):
+    """Test Azure AD presigned URL fails without account name."""
+    from chuk_artifacts.providers.azure_blob import AzureBlobAdapter
+
+    adapter = AzureBlobAdapter(
+        mock_blob_service_client_with_ad,
+        account_name=None,
+        account_key=None,
+        use_azure_ad=True,
+    )
+
+    with pytest.raises(RuntimeError, match="User Delegation SAS requires"):
+        await adapter.generate_presigned_url(
+            operation="get_object",
+            Params={"Bucket": "test-container", "Key": "test-file.txt"},
+            ExpiresIn=3600,
         )

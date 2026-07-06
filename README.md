@@ -730,10 +730,24 @@ export AWS_DEFAULT_REGION=us-east-1
 
 # Azure Blob Storage (persistent cloud storage)
 export ARTIFACT_PROVIDER=azure_blob
+
+# Option 1: Connection String
 export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
-# OR use account credentials:
+
+# Option 2: Account Name + Key
 export AZURE_STORAGE_ACCOUNT_NAME=your_account
 export AZURE_STORAGE_ACCOUNT_KEY=your_key
+
+# Option 3: Azure AD (Recommended for production)
+export AZURE_STORAGE_ACCOUNT_NAME=your_account
+export AZURE_USE_AD=true
+# For service principal (for apps/CICD):
+export AZURE_CLIENT_ID=your-client-id
+export AZURE_CLIENT_SECRET=your-client-secret
+export AZURE_TENANT_ID=your-tenant-id
+# Or use Managed Identity (if on Azure VM/AKS/Functions)
+# Or use Azure CLI: az login (for local dev)
+
 export ARTIFACT_BUCKET=your-container
 ```
 
@@ -813,9 +827,14 @@ CHUK Artifacts is designed for high performance:
 
 **Azure Blob Storage Provider:**
 - Native async Azure SDK
-- Supports connection string or account credentials
+- Multiple authentication methods:
+  - Account key (connection string or name+key)
+  - Azure AD (Service Principal, Managed Identity, Azure CLI)
 - Compatible with all Azure storage tiers
-- Presigned URL support via SAS tokens
+- Presigned URL support:
+  - Account Key SAS (requires "Allow Blob public access" setting)
+  - User Delegation SAS with Azure AD (works without public access setting)
+- Production-ready with RBAC and identity-based access
 
 **SQLite Provider:**
 - Fast for small to medium workspaces
