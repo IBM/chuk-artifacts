@@ -324,8 +324,7 @@ class AzureBlobAdapter:
             key_expiry = key_start + timedelta(hours=1)
 
             user_delegation_key = await self._client.get_user_delegation_key(
-                key_start_time=key_start,
-                key_expiry_time=key_expiry
+                key_start_time=key_start, key_expiry_time=key_expiry
             )
 
             # Generate SAS with delegation key
@@ -411,7 +410,9 @@ def factory(
     use_azure_ad = use_azure_ad or os.getenv("AZURE_USE_AD", "").lower() == "true"
 
     # Get configuration from parameters or environment
-    connection_string = connection_string or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    connection_string = connection_string or os.getenv(
+        "AZURE_STORAGE_CONNECTION_STRING"
+    )
     account_name = account_name or os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
     account_key = account_key or os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
 
@@ -445,10 +446,7 @@ def factory(
             client = BlobServiceClient(account_url=account_url, credential=credential)
 
             adapter = AzureBlobAdapter(
-                client,
-                account_name=account_name,
-                account_key=None,
-                use_azure_ad=True
+                client, account_name=account_name, account_key=None, use_azure_ad=True
             )
 
             try:
@@ -474,14 +472,16 @@ def factory(
                     except Exception:
                         extracted_name = None
             else:
-                client = BlobServiceClient(account_url=account_url, credential=account_key)
+                client = BlobServiceClient(
+                    account_url=account_url, credential=account_key
+                )
                 extracted_name = account_name
 
             adapter = AzureBlobAdapter(
                 client,
                 account_name=extracted_name,
                 account_key=account_key,
-                use_azure_ad=False
+                use_azure_ad=False,
             )
 
             try:

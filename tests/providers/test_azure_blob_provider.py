@@ -377,7 +377,9 @@ def mock_blob_service_client_with_ad(mock_container_client, mock_user_delegation
     """Mock Azure BlobServiceClient with Azure AD support."""
     mock_client = MagicMock()
     mock_client.get_container_client = MagicMock(return_value=mock_container_client)
-    mock_client.get_user_delegation_key = AsyncMock(return_value=mock_user_delegation_key)
+    mock_client.get_user_delegation_key = AsyncMock(
+        return_value=mock_user_delegation_key
+    )
     mock_client.close = AsyncMock()
     return mock_client
 
