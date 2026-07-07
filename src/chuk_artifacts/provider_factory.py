@@ -97,18 +97,9 @@ def factory_for_env() -> Callable[[], AsyncContextManager]:
         mod = import_module(f"chuk_artifacts.providers.{provider}")
     except ModuleNotFoundError as exc:
         # Provide helpful error message with available providers
-        available = [
-            "memory",
-            "filesystem",
-            "s3",
-            "ibm_cos",
-            "azure_blob",
-            "vfs",
-            "vfs-memory",
-            "vfs-filesystem",
-            "vfs-s3",
-            "vfs-sqlite",
-        ]
+        from .types import StorageProvider
+
+        available = [p.value for p in StorageProvider]
         raise ValueError(
             f"Unknown storage provider '{provider}'. "
             f"Available providers: {', '.join(available)}"

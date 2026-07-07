@@ -206,16 +206,6 @@ This is fundamentally more powerful than raw storage.
 pip install chuk-artifacts
 ```
 
-**With optional cloud storage providers:**
-
-```bash
-# Azure Blob Storage
-pip install chuk-artifacts[azure]
-
-# All extras together
-pip install chuk-artifacts[azure]
-```
-
 **Dependencies:**
 - `chuk-virtual-fs` - VFS layer (automatically installed)
 - `chuk-sessions` - Session management (automatically installed)
@@ -224,7 +214,7 @@ pip install chuk-artifacts[azure]
 - `redis` - For Redis session provider
 - `boto3` - For S3 storage backend (automatically installed)
 - `ibm-cos-sdk` - For IBM Cloud Object Storage (automatically installed)
-- `azure-storage-blob` - For Azure Blob Storage (install with `[azure]` extra)
+- `azure-storage-blob` - For Azure Blob Storage (automatically installed)
 
 ---
 
@@ -533,6 +523,7 @@ We provide **9 comprehensive examples** covering all features:
 7. **[06_session_isolation.py](examples/06_session_isolation.py)** - Session isolation and scoping
 8. **[07_large_files_streaming.py](examples/07_large_files_streaming.py)** - Large file handling
 9. **[08_batch_operations.py](examples/08_batch_operations.py)** - Batch operations
+10. **[11_azure_blob_quickstart.py](examples/11_azure_blob_quickstart.py)** - Azure Blob quickstart
 
 Run any example:
 
