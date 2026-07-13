@@ -36,6 +36,7 @@ class StorageProvider(str, Enum):
     - FILESYSTEM: Local filesystem storage
     - S3: AWS S3 or S3-compatible storage
     - IBM_COS: IBM Cloud Object Storage
+    - AZURE_BLOB: Azure Blob Storage
 
     VFS providers (recommended for both artifacts and workspaces):
     - VFS_MEMORY: VFS-based memory storage
@@ -48,6 +49,7 @@ class StorageProvider(str, Enum):
     FILESYSTEM = "filesystem"
     S3 = "s3"
     IBM_COS = "ibm_cos"
+    AZURE_BLOB = "azure_blob"
     VFS = "vfs"
     VFS_MEMORY = "vfs-memory"
     VFS_FILESYSTEM = "vfs-filesystem"

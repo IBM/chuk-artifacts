@@ -212,8 +212,9 @@ pip install chuk-artifacts
 
 **Optional:**
 - `redis` - For Redis session provider
-- `boto3` - For S3 storage backend
-- `ibm-cos-sdk` - For IBM Cloud Object Storage
+- `boto3` - For S3 storage backend (automatically installed)
+- `ibm-cos-sdk` - For IBM Cloud Object Storage (automatically installed)
+- `azure-storage-blob` - For Azure Blob Storage (automatically installed)
 
 ---
 
@@ -522,6 +523,7 @@ We provide **9 comprehensive examples** covering all features:
 7. **[06_session_isolation.py](examples/06_session_isolation.py)** - Session isolation and scoping
 8. **[07_large_files_streaming.py](examples/07_large_files_streaming.py)** - Large file handling
 9. **[08_batch_operations.py](examples/08_batch_operations.py)** - Batch operations
+10. **[11_azure_blob_quickstart.py](examples/11_azure_blob_quickstart.py)** - Azure Blob quickstart
 
 Run any example:
 
@@ -716,6 +718,28 @@ export ARTIFACT_PROVIDER=vfs-s3
 export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_DEFAULT_REGION=us-east-1
+
+# Azure Blob Storage (persistent cloud storage)
+export ARTIFACT_PROVIDER=azure_blob
+
+# Option 1: Connection String
+export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
+
+# Option 2: Account Name + Key
+export AZURE_STORAGE_ACCOUNT_NAME=your_account
+export AZURE_STORAGE_ACCOUNT_KEY=your_key
+
+# Option 3: Azure AD (Recommended for production)
+export AZURE_STORAGE_ACCOUNT_NAME=your_account
+export AZURE_USE_AD=true
+# For service principal (for apps/CICD):
+export AZURE_CLIENT_ID=your-client-id
+export AZURE_CLIENT_SECRET=your-client-secret
+export AZURE_TENANT_ID=your-tenant-id
+# Or use Managed Identity (if on Azure VM/AKS/Functions)
+# Or use Azure CLI: az login (for local dev)
+
+export ARTIFACT_BUCKET=your-container
 ```
 
 ### Session Providers
@@ -791,6 +815,17 @@ CHUK Artifacts is designed for high performance:
 - Uses streaming + zero-copy writes
 - Parallel uploads for large files
 - Battle-tested at scale
+
+**Azure Blob Storage Provider:**
+- Native async Azure SDK
+- Multiple authentication methods:
+  - Account key (connection string or name+key)
+  - Azure AD (Service Principal, Managed Identity, Azure CLI)
+- Compatible with all Azure storage tiers
+- Presigned URL support:
+  - Account Key SAS (requires "Allow Blob public access" setting)
+  - User Delegation SAS with Azure AD (works without public access setting)
+- Production-ready with RBAC and identity-based access
 
 **SQLite Provider:**
 - Fast for small to medium workspaces
