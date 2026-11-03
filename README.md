@@ -742,6 +742,38 @@ export AZURE_TENANT_ID=your-tenant-id
 export ARTIFACT_BUCKET=your-container
 ```
 
+#### S3 request signing (SigV4 by default)
+
+The native `s3` provider (`ARTIFACT_PROVIDER=s3`) signs requests, and presigned URLs, with **Signature Version 4 (`s3v4`) by default**. SigV4 is required by newer AWS regions such as `ap-south-1`, which reject the older SigV2 URLs (`AWSAccessKeyId=…&Signature=…`). Make sure `AWS_REGION` matches your bucket's region, since SigV4 signs with it.
+
+To override the default, set `S3_SIGNATURE_VERSION` or pass `signature_version` in code:
+
+```bash
+export ARTIFACT_PROVIDER=s3
+export AWS_REGION=ap-south-1
+export S3_SIGNATURE_VERSION=s3   # optional; only for stores that don't support SigV4
+```
+
+```python
+from chuk_artifacts.providers.s3 import factory
+
+s3_factory = factory(
+    endpoint_url="https://s3.example.com",
+    signature_version="s3",  # takes precedence over S3_SIGNATURE_VERSION
+)
+```
+
+Precedence is the `signature_version` argument, then `S3_SIGNATURE_VERSION`, then `s3v4`.
+
+| Value | Signature | Notes |
+|-------|-----------|-------|
+| `s3v4` | SigV4 | **Default.** Use for AWS S3 and most S3-compatible stores (MinIO, etc.) |
+| `s3` | SigV2 | Legacy. Only for older S3-compatible stores. Rejected by newer AWS regions |
+
+botocore also accepts aliases such as `v4`, `s3v4-query`, `v4-query` (SigV4) and `s3-query` (SigV2). These are equivalent to the two values above for S3. Other values (`v2`, `v3`, or a typo) fail with `UnsupportedSignatureVersionError` when the client is created.
+
+> `S3_SIGNATURE_VERSION` applies only to the `s3` provider. `vfs-s3` delegates to `chuk-virtual-fs`, which does not read it and leaves the signature version to botocore's default unless you build the VFS yourself with its own `signature_version` argument. `ibm_cos` always uses `s3` (HMAC) signing.
+
 ### Session Providers
 
 ```bash
