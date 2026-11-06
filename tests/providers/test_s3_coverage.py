@@ -243,3 +243,27 @@ class TestS3FactoryEnvironmentPriority:
                 assert call_kwargs["aws_secret_access_key"] == "override_secret"
                 assert call_kwargs["region_name"] == "eu-west-1"
                 assert call_kwargs["endpoint_url"] == "https://override.s3.com"
+
+
+class TestSignatureVersion:
+    """Presigned URLs must use SigV4 by default (required by e.g. ap-south-1)."""
+
+    def _config_for(self, **kwargs):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("chuk_artifacts.providers.s3.aioboto3.Session") as mock_cls:
+                mock_cls.return_value.client.return_value = MagicMock()
+                client(access_key="k", secret_key="s", **kwargs)
+                return mock_cls.return_value.client.call_args.kwargs["config"]
+
+    def test_default_is_sigv4(self):
+        assert self._config_for().signature_version == "s3v4"
+
+    def test_explicit_override(self):
+        assert self._config_for(signature_version="s3").signature_version == "s3"
+
+    def test_env_override(self):
+        with patch.dict(os.environ, {"S3_SIGNATURE_VERSION": "s3"}):
+            with patch("chuk_artifacts.providers.s3.aioboto3.Session") as mock_cls:
+                client(access_key="k", secret_key="s")
+                cfg = mock_cls.return_value.client.call_args.kwargs["config"]
+        assert cfg.signature_version == "s3"
