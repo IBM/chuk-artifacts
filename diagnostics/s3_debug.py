@@ -27,7 +27,7 @@ def check_minimal_s3_config():
         )
         return False
 
-    print(f"✅ Found S3 credentials: {access_key[:8]}...")
+    print("✅ Found S3 credentials")
     return True
 
 
@@ -223,7 +223,7 @@ async def test_environment_configuration():
         print("  📋 Current environment:")
         for key, value in env_vars.items():
             if "KEY" in key and value != "NOT_SET":
-                print(f"    {key}: {value[:8]}...")
+                print(f"    {key}: set")
             else:
                 print(f"    {key}: {value}")
 

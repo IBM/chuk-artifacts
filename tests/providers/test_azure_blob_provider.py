@@ -8,6 +8,7 @@ These tests verify the provider implementation without requiring a real Azure ac
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse
 
 
 @pytest.fixture
@@ -288,7 +289,7 @@ async def test_generate_presigned_url(mock_blob_service_client):
         )
 
         # Verify URL structure
-        assert "testaccount.blob.core.windows.net" in url
+        assert urlparse(url).hostname == "testaccount.blob.core.windows.net"
         assert "test-container" in url
         assert "test-file.txt" in url
         assert "sig=" in url
@@ -466,7 +467,7 @@ async def test_generate_presigned_url_with_azure_ad(
         )
 
         # Verify URL structure
-        assert "testaccount.blob.core.windows.net" in url
+        assert urlparse(url).hostname == "testaccount.blob.core.windows.net"
         assert "test-container" in url
         assert "test-file.txt" in url
         assert "sig=" in url
