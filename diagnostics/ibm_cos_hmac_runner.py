@@ -66,13 +66,13 @@ def check_ibm_cos_config():
         print("  ❌ AWS_ACCESS_KEY_ID not set")
         return False
     else:
-        print(f"  ✅ AWS_ACCESS_KEY_ID: {access_key[:8]}...")
+        print("  ✅ AWS_ACCESS_KEY_ID: set")
 
     if not secret_key:
         print("  ❌ AWS_SECRET_ACCESS_KEY not set")
         return False
     else:
-        print(f"  ✅ AWS_SECRET_ACCESS_KEY: {secret_key[:8]}...")
+        print("  ✅ AWS_SECRET_ACCESS_KEY: set")
 
     print(f"  ✅ AWS_REGION: {region}")
 

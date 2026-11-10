@@ -214,7 +214,7 @@ async def run_comprehensive_signature_test():
     print(f"   Endpoint: {endpoint}")
     print(f"   Region: {region}")
     print(f"   Bucket: {bucket}")
-    print(f"   Access Key: {access_key[:8] if access_key else 'NOT SET'}...")
+    print(f"   Access Key: {'set' if access_key else 'NOT SET'}")
 
     if not (access_key and secret_key):
         print("\n❌ Cannot run tests - missing credentials")
