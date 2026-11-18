@@ -27,16 +27,16 @@ def check_s3_config():
     endpoint = os.getenv("S3_ENDPOINT_URL")
 
     if not access_key:
-        print("  ❌ AWS_ACCESS_KEY_ID not set")
+        print("❌ AWS_ACCESS_KEY_ID not set")
         return False
     else:
-        print(f"  ✅ AWS_ACCESS_KEY_ID: set")
+        print("✅ AWS_ACCESS_KEY_ID: set")
 
     if not secret_key:
-        print("  ❌ AWS_SECRET_ACCESS_KEY not set")
+        print("❌ AWS_SECRET_ACCESS_KEY not set")
         return False
     else:
-        print(f"  ✅ AWS_SECRET_ACCESS_KEY: set")
+        print("✅ AWS_SECRET_ACCESS_KEY: set")
 
     print(f"  ✅ AWS_REGION: {region}")
 
