@@ -36,7 +36,7 @@ def check_s3_config():
         print("  ❌ AWS_SECRET_ACCESS_KEY not set")
         return False
     else:
-        print(f"  ✅ AWS_SECRET_ACCESS_KEY: {secret_key[:8]}...")
+        print(f"  ✅ AWS_SECRET_ACCESS_KEY: set")
 
     print(f"  ✅ AWS_REGION: {region}")
 
